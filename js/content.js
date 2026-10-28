@@ -8,9 +8,10 @@ var CONTENT = {
   giveFirst: 'Give first.',
   giveFirstRest: 'Intros, advice, jobs. You get out of the club what you put in.',
 
+  // Dates come from Kishon's sheet "The Masters Club - Gantt 26/27".
   nextMeeting: {
-    day: '24',
-    month: 'November',
+    day: '2',
+    month: 'December',
     title: 'Meeting 1, hosted by Playtika',
     note: 'Members RSVP in the WhatsApp event.'
   },
