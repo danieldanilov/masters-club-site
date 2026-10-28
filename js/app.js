@@ -43,6 +43,11 @@
       (m.profile.industry ? '<span class="tag">' + esc(m.profile.industry) + '</span>' : '') +
       (m.joined === false ? '<span class="tag unjoined">Not signed in yet</span>' : '');
   }
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function longDate(iso) {
+    var d = String(iso).split('-');
+    return Number(d[2]) + ' ' + MONTHS[Number(d[1]) - 1] + ' ' + d[0];
+  }
   function roleLine(p) {
     if (p.role && p.company) return esc(p.role) + ' at ' + esc(p.company);
     return esc(p.role || p.company || '');
@@ -191,7 +196,7 @@
   /* ---------- nav ---------- */
 
   function renderNav(route) {
-    var links = [['#/about', 'About'], ['#/partners', 'Partners'], ['#/join', 'Join']];
+    var links = [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners'], ['#/join', 'Join']];
     if (state.me) {
       links.push(['#/members', 'Directory'], ['#/me', 'My profile']);
       if (state.me.tier === 'leader') links.push(['#/admin', 'Admin']);
@@ -219,7 +224,12 @@
       '<div><dt>The community</dt><dd>' + esc(c.community) + '</dd></div>' +
       '</dl></section></div>' +
       '<section class="statement"><div class="wrap"><p>' + esc(c.giveFirst) + ' <span>' + esc(c.giveFirstRest) + '</span></p></div></section>' +
-      '<div class="wrap"><section class="invite">' +
+      '<div class="wrap"><section class="past"><div class="past-head"><h2>Who has been in the room</h2><a class="link" href="#/meetings">All meetings</a></div>' +
+      '<div class="rail">' + c.meetings.map(function (mt) {
+        return '<a href="#/meetings?m=' + esc(mt.id) + '"><img src="' + esc(mt.poster) + '" alt="" loading="lazy" width="640" height="640">' +
+          '<span class="who">' + esc(mt.speaker) + '</span><span class="when">' + esc(longDate(mt.date)) + '</span></a>';
+      }).join('') + '</div></section>' +
+      '<section class="invite">' +
       '<div class="date" aria-label="' + esc(m.day + ' ' + m.month) + '"><b>' + esc(m.day) + '</b><span>' + esc(m.month.slice(0, 3)) + '</span></div>' +
       '<div><h2>' + esc(m.title) + '</h2><p class="muted" style="margin:0">' + esc(m.note) + '</p></div>' +
       '<a class="btn quiet" href="#/join">How to join</a>' +
@@ -230,7 +240,26 @@
     return page('<h1>Who runs it</h1>' +
       '<p class="lead measure" style="margin-top:16px">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
       '<div class="people">' + CONTENT.leaders.map(function (p) {
-        return '<div class="person">' + avatar({ name: p.name }) + '<div><div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div></div></div>';
+        return '<div class="person">' + avatar({ name: p.name, profile: { photo: p.photo } }, 'lg') + '<div><div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div></div></div>';
+      }).join('') + '</div>');
+  }
+
+  function pageMeetings() {
+    var list = CONTENT.meetings;
+    return page('<h1>Past meetings</h1>' +
+      '<p class="lead measure" style="margin-top:16px">Cohort 1 met ' + list.length + ' times. Every meeting opens with food and structured networking, then a talk or workshop with someone worth hearing.</p>' +
+      '<div class="meetings">' + list.map(function (m, i) {
+        return '<article class="meeting" id="m-' + esc(m.id) + '">' +
+          '<img class="poster" src="' + esc(m.poster) + '" alt="Poster for ' + esc(m.speaker) + '" width="640" height="640"' + (i > 1 ? ' loading="lazy"' : '') + '>' +
+          '<div class="body">' +
+          '<p class="meta"><time datetime="' + esc(m.date) + '">' + esc(longDate(m.date)) + '</time><span>' + esc(m.kind) + '</span></p>' +
+          '<h2>' + esc(m.speaker) + '</h2><p class="muted role">' + esc(m.role) + '</p>' +
+          '<blockquote>' + esc(m.quote) + '</blockquote>' +
+          '<p class="recap">' + esc(m.recap) + '</p>' +
+          (m.photos && m.photos.length ? '<div class="photos n' + m.photos.length + '">' + m.photos.map(function (p) {
+            return '<img src="' + esc(p.src) + '" alt="' + esc(p.alt) + '" loading="lazy">';
+          }).join('') + '</div>' : '') +
+          '</div></article>';
       }).join('') + '</div>');
   }
 
@@ -710,6 +739,10 @@
       app.innerHTML = pageDenied(params.get('e'));
     } else if (route === '#/about') {
       app.innerHTML = pageAbout();
+    } else if (route === '#/meetings') {
+      app.innerHTML = pageMeetings();
+      var target = params.get('m') && document.getElementById('m-' + params.get('m'));
+      if (target) { mountSignIn(); return target.scrollIntoView(); }
     } else if (route === '#/partners') {
       app.innerHTML = pagePartners();
     } else if (route === '#/join') {
