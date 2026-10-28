@@ -183,22 +183,42 @@ var Core = (function () {
     return { members: list, hiddenTiers: hiddenTiers(rules, viewer.tier) };
   }
 
-  function searchMembers(list, query, filters) {
+  function cohortLabel(c) {
+    var s = str(c);
+    if (!s) return '';
+    return /^cohort\b/i.test(s) ? s : 'Cohort ' + s;
+  }
+
+  // Everything a member card shows, as one lowercase string to search in.
+  function searchText(m) {
+    var p = m.profile || {};
+    return [m.name, cohortLabel(m.cohort), TIER_LABEL[m.tier] || m.tier, m.joined === false ? 'not signed in yet' : '',
+      p.role, p.company, p.industry, p.bio]
+      .concat(p.help || [], p.looking || [], p.open_to || [])
+      .join(' \n ').toLowerCase();
+  }
+
+  // Default: every word must appear somewhere on the card. opts.any: members matching any
+  // word, most matching words first (the fallback when the strict search finds nobody).
+  function searchMembers(list, query, filters, opts) {
     filters = filters || {};
+    opts = opts || {};
     var words = str(query).toLowerCase().split(/\s+/).filter(Boolean);
     var open = filters.open || [];
-    return (list || []).filter(function (m) {
+    var scored = [];
+    (list || []).forEach(function (m) {
       var p = m.profile || {};
-      if (filters.cohort && m.cohort !== filters.cohort) return false;
-      if (filters.tier && m.tier !== filters.tier) return false;
-      if (filters.industry && p.industry !== filters.industry) return false;
-      if (open.length && !open.every(function (o) { return (p.open_to || []).indexOf(o) !== -1; })) return false;
-      if (!words.length) return true;
-      var hay = [m.name, m.cohort, p.role, p.company, p.industry, p.bio]
-        .concat(p.help || [], p.looking || [], p.open_to || [])
-        .join(' ').toLowerCase();
-      return words.every(function (w) { return hay.indexOf(w) !== -1; });
+      if (filters.cohort && m.cohort !== filters.cohort) return;
+      if (filters.tier && m.tier !== filters.tier) return;
+      if (filters.industry && p.industry !== filters.industry) return;
+      if (open.length && !open.every(function (o) { return (p.open_to || []).indexOf(o) !== -1; })) return;
+      if (!words.length) { scored.push({ m: m, score: 0 }); return; }
+      var hay = searchText(m);
+      var hits = words.filter(function (w) { return hay.indexOf(w) !== -1; }).length;
+      if (opts.any ? hits > 0 : hits === words.length) scored.push({ m: m, score: hits });
     });
+    if (opts.any) scored.sort(function (a, b) { return b.score - a.score; });
+    return scored.map(function (s) { return s.m; });
   }
 
   /* ---------- bulk add ---------- */
@@ -302,6 +322,7 @@ var Core = (function () {
     validateProfile: validateProfile,
     directoryEntry: directoryEntry,
     buildDirectory: buildDirectory,
+    cohortLabel: cohortLabel,
     searchMembers: searchMembers,
     parseMemberLines: parseMemberLines,
     sanitizeCell: sanitizeCell,

@@ -1,38 +1,51 @@
 // The Masters Club site: hash routes, Google sign-in, directory, profile editor, admin.
+// Look and feel: docs/06-design.md.
 (function () {
   var $ = function (s, root) { return (root || document).querySelector(s); };
   var $$ = function (s, root) { return Array.prototype.slice.call((root || document).querySelectorAll(s)); };
   var esc = Core.escapeHtml;
-  var COLORS = ['#3b5b8c', '#8c5a3b', '#2f7d5b', '#7a3b8c', '#8c3b4f', '#3b7a8c', '#6b6b2f', '#4f3b8c'];
   var TIER_LABEL = Core.TIER_LABEL;
+  var cohortLabel = Core.cohortLabel;
 
   var state = {
     me: null,          // signed-in member, from signIn or me
-    booted: false,
     directory: null,   // last directory response
     dir: { q: '', cohort: '', industry: '', open: [] },
     guest: null        // {email, name, request} after an unknown sign-in
   };
+
+  /* ---------- icons (one stroke family, drawn here) ---------- */
+
+  var ICON_PATHS = {
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    chat: '<path d="M5 19l1.2-3.6A7.5 7.5 0 1 1 9 18.3z"/><path d="M9.5 9.5c0 2.5 2 4.5 4.5 5l1-1.2-1.6-.9-.8.8c-.9-.4-1.6-1.1-2-2l.8-.8-.9-1.6z"/>',
+    linkedin: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 10.5v5.5M8 7.8v.2M11.5 16v-5.5M11.5 13c0-1.6 1-2.6 2.3-2.6s2.2.9 2.2 2.6V16"/>'
+  };
+  function icon(name) {
+    return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_PATHS[name] + '</svg>';
+  }
 
   /* ---------- small helpers ---------- */
 
   function initials(n) {
     return String(n || '?').split(/\s+/).filter(Boolean).map(function (p) { return p[0]; }).slice(0, 2).join('').toUpperCase();
   }
-  function colorFor(key) {
-    var s = String(key || '');
-    var sum = 0;
-    for (var i = 0; i < s.length; i++) sum += s.charCodeAt(i);
-    return COLORS[sum % COLORS.length];
-  }
-  function avatar(person, cls, style) {
+  function avatar(person, cls) {
     var photo = person.profile && person.profile.photo;
-    var extra = style ? ';' + style : '';
-    if (photo) return '<img class="avatar ' + (cls || '') + '" style="' + extra.slice(1) + '" src="' + esc(photo) + '" alt="" referrerpolicy="no-referrer">';
-    return '<div class="avatar ' + (cls || '') + '" style="background:' + colorFor(person.id || person.name) + extra + '" aria-hidden="true">' + esc(initials(person.name)) + '</div>';
+    if (photo) return '<img class="avatar ' + (cls || '') + '" src="' + esc(photo) + '" alt="" referrerpolicy="no-referrer">';
+    return '<div class="avatar ' + (cls || '') + '" aria-hidden="true">' + esc(initials(person.name)) + '</div>';
   }
-  function tierTag(t) {
-    return '<span class="tag tier-' + esc(t) + '">' + esc(TIER_LABEL[t] || t) + '</span>';
+  function tags(m) {
+    return '<span class="tag ' + esc(m.tier) + '">' + esc(TIER_LABEL[m.tier] || m.tier) + '</span>' +
+      (m.cohort ? '<span class="tag">' + esc(cohortLabel(m.cohort)) + '</span>' : '') +
+      (m.profile.industry ? '<span class="tag">' + esc(m.profile.industry) + '</span>' : '') +
+      (m.joined === false ? '<span class="tag unjoined">Not signed in yet</span>' : '');
+  }
+  function roleLine(p) {
+    if (p.role && p.company) return esc(p.role) + ' at ' + esc(p.company);
+    return esc(p.role || p.company || '');
   }
   function toast(msg) {
     var t = $('#toast');
@@ -48,11 +61,11 @@
     return '<div class="loading"><div class="spinner"></div>' + esc(text || 'Loading') + '</div>';
   }
   function errorBlock(err) {
-    return '<section class="block"><div class="wrap" style="max-width:640px"><div class="note warn">' + esc(err.message || 'Something went wrong') + '</div>' +
-      '<p><button class="btn light" data-retry>Try again</button></p></div></section>';
+    return '<div class="wrap page"><div class="note warn">' + esc(err.message || 'Something went wrong') + '</div>' +
+      '<p style="margin-top:16px"><button class="btn quiet" data-retry>Try again</button></p></div>';
   }
-  function section(inner, style) {
-    return '<section class="block"' + (style ? ' style="' + style + '"' : '') + '><div class="wrap">' + inner + '</div></section>';
+  function page(inner) {
+    return '<div class="wrap page">' + inner + '</div>';
   }
   function setBusy(btn, busy, label) {
     if (!btn) return;
@@ -60,16 +73,23 @@
     else { btn.textContent = btn.dataset.label || btn.textContent; btn.disabled = false; }
   }
 
-  /* ---------- modal ---------- */
+  /* ---------- profile sheet ---------- */
 
-  function openModal(html) {
-    $('#modal').innerHTML = '<button class="close" data-close aria-label="Close">×</button>' + html;
+  var lastFocus = null;
+  function openSheet(html) {
+    lastFocus = document.activeElement;
+    $('#modal').innerHTML = '<button class="close" data-close aria-label="Close">' + icon('close') + '</button><div class="sheet">' + html + '</div>';
     $('#scrim').classList.add('open');
-    $('#modal [data-close]').addEventListener('click', closeModal);
+    $('#modal [data-close]').addEventListener('click', closeSheet);
+    $('#modal [data-close]').focus();
   }
-  function closeModal() { $('#scrim').classList.remove('open'); }
-  $('#scrim').addEventListener('click', function (e) { if (e.target.id === 'scrim') closeModal(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+  function closeSheet() {
+    if (!$('#scrim').classList.contains('open')) return;
+    $('#scrim').classList.remove('open');
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  $('#scrim').addEventListener('click', function (e) { if (e.target.id === 'scrim') closeSheet(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
 
   /* ---------- sign-in ---------- */
 
@@ -97,7 +117,7 @@
     if (CONFIG.DEV_SIGNIN) {
       slots.forEach(function (slot) {
         slot.innerHTML = '<form class="dev-signin" data-dev-signin><input type="email" name="email" placeholder="Test email" required aria-label="Test email">' +
-          '<button class="btn google" type="submit">Sign in (dev)</button></form>';
+          '<button class="btn navy" type="submit">Sign in (dev)</button></form>';
         $('form', slot).addEventListener('submit', function (e) {
           e.preventDefault();
           handleCredential(devToken(new FormData(e.target).get('email')));
@@ -112,10 +132,10 @@
     loadGoogle().then(function () {
       slots.forEach(function (slot) {
         slot.innerHTML = '';
-        google.accounts.id.renderButton(slot, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', width: 260 });
+        google.accounts.id.renderButton(slot, { theme: slot.dataset.theme || 'outline', size: 'large', shape: 'rectangular', text: 'signin_with', width: 280 });
       });
     }).catch(function (e) {
-      slots.forEach(function (slot) { slot.innerHTML = '<div class="note warn">' + esc(e.message) + '. Disable blockers for this site and reload.</div>'; });
+      slots.forEach(function (slot) { slot.innerHTML = '<div class="note warn">' + esc(e.message) + '. Turn off blockers for this site and reload.</div>'; });
     });
   }
 
@@ -171,16 +191,13 @@
   /* ---------- nav ---------- */
 
   function renderNav(route) {
-    var links = [['#/', 'Home'], ['#/about', 'About'], ['#/partners', 'Partners'], ['#/join', 'Join']];
-    var html = links.map(function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; }).join('');
+    var links = [['#/about', 'About'], ['#/partners', 'Partners'], ['#/join', 'Join']];
     if (state.me) {
-      html += '<a href="#/members" class="' + (route === '#/members' ? 'active' : '') + '">Directory</a>';
-      html += '<a href="#/me" class="' + (route === '#/me' ? 'active' : '') + '">My profile</a>';
-      if (state.me.tier === 'leader') html += '<a href="#/admin" class="' + (route === '#/admin' ? 'active' : '') + '">Admin</a>';
-      html += '<a href="#/" data-signout>Sign out</a>';
-    } else {
-      html += '<a href="#/members" class="btn gold small" style="margin-left:8px;color:#fff">Members sign in</a>';
+      links.push(['#/members', 'Directory'], ['#/me', 'My profile']);
+      if (state.me.tier === 'leader') links.push(['#/admin', 'Admin']);
     }
+    var html = links.map(function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; }).join('');
+    html += state.me ? '<a href="#/" data-signout>Sign out</a>' : '<a href="#/members" class="btn gold small">Members sign in</a>';
     $('#nav').innerHTML = html;
     var so = $('[data-signout]');
     if (so) so.addEventListener('click', function (e) { e.preventDefault(); signOut(); });
@@ -190,61 +207,65 @@
 
   function pageHome() {
     var c = CONTENT;
-    return '<section class="hero"><div class="wrap">' +
-      '<div class="eyebrow">' + esc(c.established) + '</div><h1>The Masters Club</h1>' +
+    var m = c.nextMeeting;
+    return '<section class="hero"><div class="tie" aria-hidden="true"></div><div class="wrap">' +
+      '<h1>The Masters Club</h1>' +
       '<p class="lead">' + esc(c.tagline) + '</p>' +
-      '<div class="ctas"><a class="btn gold" href="#/join">Apply for the next cohort</a><a class="btn ghost" href="#/partners" style="color:#fff">Partner with us</a></div>' +
-      '<div class="stats">' + c.stats.map(function (s) { return '<div><b>' + esc(s.value) + '</b><span>' + esc(s.label) + '</span></div>'; }).join('') + '</div>' +
+      '<div class="actions on-navy"><a class="btn gold" href="#/join">Apply for the next cohort</a><a class="link" href="#/partners">Partner with us</a></div>' +
       '</div></section>' +
-      section('<div class="eyebrow">What it is</div><h2>Small rooms, real people</h2><div class="grid cols-3" style="margin-top:20px">' +
-        '<div class="card"><h3>The club</h3><p class="muted">A hand-picked cohort each semester, meeting for curated sessions with founders, operators and investors.</p></div>' +
-        '<div class="card"><h3>The community</h3><p class="muted">Everyone who has been through a cohort, for life. Dinners, low-key meetups and a member directory.</p></div>' +
-        '<div class="card"><h3>Give first</h3><p class="muted">Membership means helping each other: intros, advice, jobs. You get what you put in.</p></div></div>') +
-      section('<div class="card" style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between"><div>' +
-        '<div class="eyebrow">Next meeting</div><h3 style="margin-top:6px">' + esc(c.nextMeeting.title) + '</h3>' +
-        '<p class="muted" style="margin:0">' + esc(c.nextMeeting.note) + '</p></div><a class="btn light" href="#/join">How to join</a></div>', 'padding-top:0');
+      '<div class="wrap">' +
+      '<section class="split"><h2>A club and a community</h2><dl>' +
+      '<div><dt>The club</dt><dd>' + esc(c.club) + '</dd></div>' +
+      '<div><dt>The community</dt><dd>' + esc(c.community) + '</dd></div>' +
+      '</dl></section></div>' +
+      '<section class="statement"><div class="wrap"><p>' + esc(c.giveFirst) + ' <span>' + esc(c.giveFirstRest) + '</span></p></div></section>' +
+      '<div class="wrap"><section class="invite">' +
+      '<div class="date" aria-label="' + esc(m.day + ' ' + m.month) + '"><b>' + esc(m.day) + '</b><span>' + esc(m.month.slice(0, 3)) + '</span></div>' +
+      '<div><h2>' + esc(m.title) + '</h2><p class="muted" style="margin:0">' + esc(m.note) + '</p></div>' +
+      '<a class="btn quiet" href="#/join">How to join</a>' +
+      '</section></div>';
   }
 
   function pageAbout() {
-    return section('<div class="eyebrow">About</div><h2>Who runs it</h2>' +
-      '<p class="muted" style="max-width:640px">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
-      '<div class="grid cols-3" style="margin-top:24px">' + CONTENT.leaders.map(function (p) {
-        return '<div class="card person">' + avatar({ name: p.name }) + '<div><div class="name">' + esc(p.name) + '</div><div class="muted" style="font-size:14px">' + esc(p.role) + '</div></div></div>';
+    return page('<h1>Who runs it</h1>' +
+      '<p class="lead measure" style="margin-top:16px">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
+      '<div class="people">' + CONTENT.leaders.map(function (p) {
+        return '<div class="person">' + avatar({ name: p.name }) + '<div><div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div></div></div>';
       }).join('') + '</div>');
   }
 
   function pagePartners() {
     var c = CONTENT;
-    var cta = c.partnerEmail ? '<div style="margin-top:24px"><a class="btn gold" href="mailto:' + esc(c.partnerEmail) + '?subject=Partnering%20with%20the%20Masters%20Club">Talk to us about partnering</a></div>' : '';
-    return section('<div class="eyebrow">Partners</div><h2>Work with the club</h2>' +
-      '<p class="muted" style="max-width:640px">We partner slowly and choose companies whose involvement helps our members.</p>' +
+    var cta = c.partnerEmail ? '<p style="margin-top:32px"><a class="btn gold" href="mailto:' + esc(c.partnerEmail) + '?subject=Partnering%20with%20the%20Masters%20Club">Talk to us about partnering</a></p>' : '';
+    return page('<h1>Work with the club</h1>' +
+      '<p class="lead measure" style="margin-top:16px">We partner slowly and choose companies whose involvement helps our members.</p>' +
       c.partners.map(function (p) {
-        return '<div class="card" style="margin:20px 0;display:flex;gap:16px;align-items:center;flex-wrap:wrap"><div class="avatar" style="background:' + esc(p.color) + ';border-radius:12px">' + esc(p.initial) + '</div>' +
-          '<div><div class="name">' + esc(p.name) + '</div><div class="muted" style="font-size:14px">' + esc(p.note) + '</div></div></div>';
+        return '<div class="partner-now"><div class="avatar">' + esc(p.initial) + '</div><div><div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.note) + '</div></div></div>';
       }).join('') +
-      '<div class="grid cols-3">' + c.partnerTiers.map(function (t) {
-        return '<div class="card"><div class="eyebrow">' + esc(t.name) + '</div><h3 style="margin-top:6px">' + esc(t.price) + '</h3><p class="muted">' + esc(t.detail) + '</p></div>';
-      }).join('') + '</div>' + cta);
+      '<div class="tiers">' + c.partnerTiers.map(function (t) {
+        return '<div><h3>' + esc(t.name) + '</h3><div class="price">' + esc(t.price) + '</div><p class="muted" style="margin:0">' + esc(t.detail) + '</p></div>';
+      }).join('') + '</div>' +
+      (c.partnerTiersNote ? '<p class="muted small" style="margin-top:12px">' + esc(c.partnerTiersNote) + '</p>' : '') + cta);
   }
 
   function pageJoin() {
-    return section('<div class="eyebrow">Join</div><h2>Two ways in</h2><div class="grid cols-2" style="margin-top:20px">' +
-      '<div class="card"><h3>Apply to a cohort</h3><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
+    return page('<h1>Two ways in</h1><div class="paths">' +
+      '<div><h2>Apply to a cohort</h2><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
       '<a class="btn gold" href="' + esc(CONTENT.applyUrl) + '" target="_blank" rel="noopener">Application form</a></div>' +
-      '<div class="card"><h3>Already been through a cohort?</h3><p class="muted">You\'re in the community for life. Sign in with Google. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' +
+      '<div><h2>Been through a cohort?</h2><p class="muted">You\'re in the community for life. Sign in with Google. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' +
       '<div class="gsi-slot"></div></div></div>');
   }
 
   function pageNeedLogin() {
-    return '<section class="block"><div class="wrap" style="max-width:560px;text-align:center"><h2>Members only</h2>' +
-      '<p class="muted">Sign in with your Google account. No new password, and you stay signed in for 30 days.</p><div class="gsi-slot"></div></div></section>';
+    return page('<div class="panel"><div class="inner"><h1>Members only</h1>' +
+      '<p class="muted" style="margin:0">Sign in with your Google account. No new password, and you stay signed in for 30 days.</p><div class="gsi-slot"></div></div></div>');
   }
 
   function pageDenied(email) {
-    return '<section class="block"><div class="wrap" style="max-width:640px">' +
-      '<div class="note warn"><b>' + esc(email || 'This account') + '</b> is on the list but marked inactive.</div>' +
-      '<h2 style="margin-top:24px">Can\'t get in?</h2><p class="muted">Ask one of the leaders on WhatsApp to reactivate you, or sign in with another Google account.</p>' +
-      '<div class="gsi-slot" style="justify-content:flex-start"></div></div></section>';
+    return page('<div class="panel"><div class="inner"><h1>Can\'t get in?</h1>' +
+      '<p><b>' + esc(email || 'This account') + '</b> is on the list but marked inactive.</p>' +
+      '<p class="muted" style="margin:0">Ask one of the leaders on WhatsApp to reactivate you, or sign in with another Google account.</p>' +
+      '<div class="gsi-slot"></div></div></div>');
   }
 
   /* ---------- access request (guests) ---------- */
@@ -253,16 +274,16 @@
     var g = state.guest;
     if (!g || !Api.guest()) return pageNeedLogin();
     if (g.request && g.request.status === 'pending') {
-      return '<section class="block"><div class="wrap" style="max-width:640px"><div class="eyebrow">Access request</div><h2>You\'re on the waiting list</h2>' +
+      return page('<div class="panel"><div class="inner"><h1>You\'re on the waiting list</h1>' +
         '<p class="muted">We got your request for <b>' + esc(g.email) + '</b>. A leader will link it to your name, and then you can sign in. Nothing else to do.</p>' +
-        '<p><button class="btn light" data-signout-guest>Use another Google account</button></p></div></section>';
+        '<button class="btn quiet" data-signout-guest>Use another Google account</button></div></div>');
     }
-    return '<section class="block"><div class="wrap" style="max-width:640px"><div class="eyebrow">Access request</div><h2>We don\'t have this email yet</h2>' +
+    return page('<div class="panel"><div class="inner"><h1>We don\'t have this email yet</h1>' +
       '<p class="muted">You signed in as <b>' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name.</p>' +
-      '<form class="form-grid card" id="requestForm" novalidate>' +
+      '<form class="form-grid" id="requestForm" novalidate style="margin-top:24px">' +
       '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto" value="' + esc(g.name) + '"><span class="field-error" data-err="name"></span></label>' +
       '<label>Anything that helps us find you <span class="hint">Your cohort, or the name you use on WhatsApp</span><textarea name="note" maxlength="280" rows="2" dir="auto"></textarea><span class="field-error" data-err="note"></span></label>' +
-      '<div class="row-actions"><button class="btn gold" type="submit">Send request</button><button class="btn light" type="button" data-signout-guest>Use another account</button></div></form></div></section>';
+      '<div class="row-actions"><button class="btn gold" type="submit">Send request</button><button class="link" type="button" data-signout-guest>Use another account</button></div></form></div></div>');
   }
 
   function wireRequest() {
@@ -290,8 +311,8 @@
   /* ---------- directory ---------- */
 
   function pageMembers() {
-    return '<section class="block"><div class="wrap"><div class="dir-head"><div><div class="eyebrow">Members</div><h2 style="margin:4px 0 0">Directory</h2></div>' +
-      '<a class="btn light small" href="#/me">Edit my profile</a></div><div id="dirBody">' + loading('Loading the directory') + '</div></div></section>';
+    return page('<div class="page-head"><h1>Directory</h1><span class="count" id="count" aria-live="polite"></span>' +
+      '<span class="spacer"></span><a class="link" href="#/me">Edit my profile</a></div><div id="dirBody">' + loading('Loading the directory') + '</div>');
   }
 
   async function wireMembers() {
@@ -303,31 +324,42 @@
       return wireRetry();
     }
     var d = state.directory;
-    var cohorts = Array.from(new Set(d.members.map(function (m) { return m.cohort; }).filter(Boolean))).sort();
+    var cohorts = Array.from(new Set(d.members.map(function (m) { return m.cohort; }).filter(Boolean)))
+      .sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
     var hidden = d.hiddenTiers.length
-      ? '<div class="note info" style="margin-bottom:14px">You\'re viewing as <b>' + esc(TIER_LABEL[d.viewer.tier]) + '</b>, so ' + esc(d.hiddenTiers.map(function (t) { return TIER_LABEL[t]; }).join(', ')) + ' profiles are hidden from you.</div>'
+      ? '<p class="note" style="margin-bottom:16px">You\'re viewing as ' + esc(TIER_LABEL[d.viewer.tier]) + ', so ' + esc(d.hiddenTiers.map(function (t) { return TIER_LABEL[t]; }).join(' and ')) + ' profiles are hidden from you.</p>'
       : '';
     var s = state.dir;
     $('#dirBody').innerHTML = hidden +
-      '<label class="sr-only" for="q">Search members</label><input class="search" id="q" placeholder="Search name, company, role, or what someone can help with" value="' + esc(s.q) + '" dir="auto" autocomplete="off">' +
-      '<div class="filters"><select id="fCohort" aria-label="Cohort"><option value="">All cohorts</option>' + cohorts.map(function (c) { return '<option ' + (s.cohort === c ? 'selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
+      '<div class="search-row">' + icon('search') + '<label class="sr-only" for="q">Search members</label>' +
+      '<input class="search" type="search" id="q" placeholder="Search by name, company or skill" value="' + esc(s.q) + '" dir="auto" autocomplete="off"></div>' +
+      '<div class="filters"><select id="fCohort" aria-label="Cohort"><option value="">All cohorts</option>' +
+      cohorts.map(function (c) { return '<option value="' + esc(c) + '" ' + (s.cohort === c ? 'selected' : '') + '>' + esc(cohortLabel(c)) + '</option>'; }).join('') + '</select>' +
       '<select id="fIndustry" aria-label="Industry"><option value="">All industries</option>' + Core.INDUSTRIES.map(function (i) { return '<option ' + (s.industry === i ? 'selected' : '') + '>' + esc(i) + '</option>'; }).join('') + '</select>' +
       Core.OPEN_TO.map(function (o) { return '<button class="chip ' + (s.open.indexOf(o) !== -1 ? 'on' : '') + '" data-open="' + esc(o) + '" aria-pressed="' + (s.open.indexOf(o) !== -1) + '">' + esc(o) + '</button>'; }).join('') +
-      '</div><div class="count" id="count" aria-live="polite"></div><div class="grid cols-2" id="results" style="margin-top:12px"></div>' +
-      '<div class="card" style="margin-top:28px"><div class="eyebrow">Jobs, events and chat live in WhatsApp</div><div class="wa-list" style="margin-top:8px">' +
+      '</div><p class="result-note" id="resultNote" hidden></p><div class="results" id="results"></div>' +
+      '<section class="wa"><h2>Chat, events and jobs happen on WhatsApp</h2><p class="muted" style="margin:0">The directory is for finding people. Everything else stays in the club\'s groups.</p><ul>' +
       CONTENT.whatsappGroups.map(function (g) {
-        return g.url
-          ? '<a href="' + esc(g.url) + '" target="_blank" rel="noopener"><span>' + esc(g.name) + '</span><span class="pill-green">Open in WhatsApp →</span></a>'
-          : '<a><span>' + esc(g.name) + '</span><span class="inline-note">Ask a leader for the link</span></a>';
-      }).join('') + '</div></div>';
+        return '<li>' + icon('chat') + '<span class="grow">' + esc(g.name) + '</span>' +
+          (g.url ? '<a class="btn quiet small" href="' + esc(g.url) + '" target="_blank" rel="noopener">Open in WhatsApp</a>' : '<span class="muted small">Ask a leader for the link</span>') + '</li>';
+      }).join('') + '</ul></section>';
 
     function draw() {
-      var list = Core.searchMembers(d.members, s.q, { cohort: s.cohort, industry: s.industry, open: s.open });
+      var filters = { cohort: s.cohort, industry: s.industry, open: s.open };
+      var list = Core.searchMembers(d.members, s.q, filters);
+      var note = $('#resultNote');
+      note.hidden = true;
+      if (!list.length && s.q.trim().split(/\s+/).length > 1) {
+        list = Core.searchMembers(d.members, s.q, filters, { any: true });
+        if (list.length) {
+          note.textContent = 'Nobody matches all of "' + s.q.trim() + '", so here is everyone who matches part of it, best matches first.';
+          note.hidden = false;
+        }
+      }
       $('#count').textContent = list.length + ' member' + (list.length === 1 ? '' : 's');
-      $('#results').innerHTML = list.length ? list.map(memberCard).join('') : '<div class="card muted">Nobody matches. Try fewer filters.</div>';
+      $('#results').innerHTML = list.length ? list.map(memberCard).join('') : '<div class="empty">Nobody matches. Try fewer words or filters.</div>';
       $$('#results .member-card').forEach(function (c) {
         c.addEventListener('click', function () { openProfile(c.dataset.id); });
-        c.addEventListener('keydown', function (e) { if (e.key === 'Enter') openProfile(c.dataset.id); });
       });
     }
     $('#q').addEventListener('input', function (e) { s.q = e.target.value; draw(); });
@@ -347,34 +379,34 @@
 
   function memberCard(m) {
     var p = m.profile;
-    var line = p.role ? esc(p.role) + (p.company ? ' @ ' + esc(p.company) : '') : (p.company ? esc(p.company) : '<i>Profile not filled in yet</i>');
-    return '<div class="card member-card" data-id="' + esc(m.id) + '" tabindex="0" role="button"><div class="person">' + avatar(m) + '<div style="min-width:0">' +
-      '<div class="name" dir="auto">' + esc(m.name) + '</div><div class="muted" style="font-size:14px" dir="auto">' + line + '</div>' +
-      '<div class="tags">' + tierTag(m.tier) + (m.cohort ? '<span class="tag">Cohort ' + esc(m.cohort) + '</span>' : '') + (p.industry ? '<span class="tag">' + esc(p.industry) + '</span>' : '') +
-      (m.joined ? '' : '<span class="tag unjoined">Not signed in yet</span>') + '</div>' +
-      (p.help.length ? '<div class="muted" style="font-size:13px;margin-top:8px" dir="auto">Can help with: ' + esc(p.help.join(', ')) + '</div>' : '') +
-      '</div></div></div>';
+    var role = roleLine(p);
+    return '<button class="member-card" data-id="' + esc(m.id) + '" type="button">' + avatar(m) + '<span class="body">' +
+      '<span class="name" dir="auto">' + esc(m.name) + '</span>' +
+      '<span class="role" dir="auto" style="display:block">' + (role || 'No profile yet') + '</span>' +
+      '<span class="tags">' + tags(m) + '</span>' +
+      (p.help.length ? '<span class="help" dir="auto" style="display:block">Can help with ' + esc(p.help.join(', ')) + '</span>' : '') +
+      '</span></button>';
   }
 
-  function profileCard(m, preview) {
+  function profileSheet(m, preview) {
     var p = m.profile;
-    var wa = p.phone ? '<a class="btn gold small" href="https://wa.me/' + esc(String(p.phone).replace(/\D/g, '')) + '" target="_blank" rel="noopener">WhatsApp</a>' : '';
-    var li = p.linkedin ? '<a class="btn light small" href="' + esc(p.linkedin) + '" target="_blank" rel="noopener">LinkedIn</a>' : '';
-    function tags(label, arr) {
-      return arr && arr.length ? '<p style="margin:12px 0 4px;font-size:13px;font-weight:600">' + label + '</p><div class="tags" style="margin-top:0">' + arr.map(function (h) { return '<span class="tag" dir="auto">' + esc(h) + '</span>'; }).join('') + '</div>' : '';
+    var wa = p.phone ? '<a class="btn gold" href="https://wa.me/' + esc(String(p.phone).replace(/\D/g, '')) + '" target="_blank" rel="noopener">' + icon('chat') + 'WhatsApp</a>' : '';
+    var li = p.linkedin ? '<a class="btn quiet" href="' + esc(p.linkedin) + '" target="_blank" rel="noopener">' + icon('linkedin') + 'LinkedIn</a>' : '';
+    function list(label, arr) {
+      return arr && arr.length ? '<h3>' + label + '</h3><div class="tags">' + arr.map(function (h) { return '<span class="tag" dir="auto">' + esc(h) + '</span>'; }).join('') + '</div>' : '';
     }
-    var actions = wa || li ? '<div class="actions" style="justify-content:center">' + wa + li + '</div>' : (preview ? '' : '<p class="inline-note" style="text-align:center">No contact links yet.</p>');
-    return '<div style="text-align:center">' + avatar(m, 'lg', 'margin:0 auto 12px') +
-      '<h3 style="margin-bottom:2px" dir="auto">' + esc(m.name) + '</h3>' +
-      '<div class="muted" dir="auto">' + (p.role ? esc(p.role) + (p.company ? ' @ ' + esc(p.company) : '') : 'No role yet') + '</div>' +
-      '<div class="tags" style="justify-content:center">' + tierTag(m.tier) + (m.cohort ? '<span class="tag">Cohort ' + esc(m.cohort) + '</span>' : '') + (p.industry ? '<span class="tag">' + esc(p.industry) + '</span>' : '') + '</div></div>' +
-      (p.bio ? '<p style="margin-top:16px;white-space:pre-line" dir="auto">' + esc(p.bio) + '</p>' : '') +
-      tags('I can help with', p.help) + tags('I\'m looking for', p.looking) + tags('Open to', p.open_to) + actions;
+    var actions = wa || li ? '<div class="actions">' + wa + li + '</div>' : (preview ? '' : '<p class="muted small" style="margin-top:28px">No contact links yet.</p>');
+    return avatar(m, 'lg') +
+      '<h2 dir="auto">' + esc(m.name) + '</h2>' +
+      '<div class="role" dir="auto">' + (roleLine(p) || 'No role yet') + '</div>' +
+      '<div class="tags" style="margin-top:14px">' + tags(m) + '</div>' +
+      (p.bio ? '<p class="bio" dir="auto">' + esc(p.bio) + '</p>' : '') +
+      list('Can help with', p.help) + list('Looking for', p.looking) + list('Open to', p.open_to) + actions;
   }
 
   function openProfile(id) {
     var m = state.directory && state.directory.members.filter(function (x) { return x.id === id; })[0];
-    if (m) openModal(profileCard(m));
+    if (m) openSheet(profileSheet(m));
   }
 
   /* ---------- my profile ---------- */
@@ -384,23 +416,23 @@
     var p = u.profile;
     var first = !u.hasProfile;
     var opt = function (list, val) { return list.map(function (i) { return '<option ' + (val === i ? 'selected' : '') + '>' + esc(i) + '</option>'; }).join(''); };
-    return '<section class="block"><div class="wrap"><div class="eyebrow">My profile</div><h2>' + (first ? 'Welcome. Fill in your profile' : 'Edit your profile') + '</h2>' +
-      (first ? '<div class="note" style="margin-bottom:20px">This is how other members find you. It takes a minute, and you can change it any time.</div>' : '') +
-      '<div class="two"><form class="form-grid card" id="profileForm" novalidate>' +
+    return page('<div class="page-head"><h1>' + (first ? 'Welcome. Fill in your profile' : 'Edit your profile') + '</h1></div>' +
+      (first ? '<p class="lead measure" style="margin-top:-8px">This is how other members find you. It takes a minute, and you can change it any time.</p>' : '') +
+      '<div class="two" style="margin-top:28px"><form class="form-grid" id="profileForm" novalidate>' +
       '<label>Name<input type="text" name="name" value="' + esc(u.name) + '" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +
       '<label>Role<input type="text" name="role" value="' + esc(p.role) + '" maxlength="60" dir="auto" placeholder="Product Manager"><span class="field-error" data-err="role"></span></label>' +
       '<label>Company<input type="text" name="company" value="' + esc(p.company) + '" maxlength="60" dir="auto" placeholder="Where you work now"><span class="field-error" data-err="company"></span></label>' +
       '<label>Industry<select name="industry"><option value="">Choose one</option>' + opt(Core.INDUSTRIES, p.industry) + '</select><span class="field-error" data-err="industry"></span></label>' +
-      '<label>Cohort <span class="hint">Set by leaders</span><input type="text" value="' + esc(u.cohort) + '" disabled></label>' +
-      '<label>I can help with <span class="hint">Comma-separated, up to 6</span><input type="text" name="help" value="' + esc(p.help.join(', ')) + '" maxlength="250" dir="auto" placeholder="PM interviews, fundraising"><span class="field-error" data-err="help"></span></label>' +
-      '<label>I\'m looking for <span class="hint">Comma-separated, up to 6</span><input type="text" name="looking" value="' + esc(p.looking.join(', ')) + '" maxlength="250" dir="auto" placeholder="Co-founder, PM roles"><span class="field-error" data-err="looking"></span></label>' +
-      '<label>Open to<div class="checks">' + Core.OPEN_TO.map(function (o) { return '<label><input type="checkbox" name="open_to" value="' + esc(o) + '" ' + (p.open_to.indexOf(o) !== -1 ? 'checked' : '') + '> ' + esc(o) + '</label>'; }).join('') + '</div></label>' +
+      '<label>Cohort <span class="hint">Set by leaders</span><input type="text" value="' + esc(cohortLabel(u.cohort)) + '" disabled></label>' +
+      '<label>I can help with <span class="hint">Separate with commas, up to 6</span><input type="text" name="help" value="' + esc(p.help.join(', ')) + '" maxlength="250" dir="auto" placeholder="PM interviews, fundraising"><span class="field-error" data-err="help"></span></label>' +
+      '<label>I\'m looking for <span class="hint">Separate with commas, up to 6</span><input type="text" name="looking" value="' + esc(p.looking.join(', ')) + '" maxlength="250" dir="auto" placeholder="Co-founder, PM roles"><span class="field-error" data-err="looking"></span></label>' +
+      '<div class="field">Open to<div class="checks">' + Core.OPEN_TO.map(function (o) { return '<label><input type="checkbox" name="open_to" value="' + esc(o) + '" ' + (p.open_to.indexOf(o) !== -1 ? 'checked' : '') + '> ' + esc(o) + '</label>'; }).join('') + '</div></div>' +
       '<label>Short bio <span class="hint">Up to 280 characters</span><textarea name="bio" maxlength="280" rows="3" dir="auto">' + esc(p.bio) + '</textarea><span class="field-error" data-err="bio"></span></label>' +
       '<label>LinkedIn URL<input type="url" name="linkedin" value="' + esc(p.linkedin) + '" placeholder="https://www.linkedin.com/in/..."><span class="field-error" data-err="linkedin"></span></label>' +
-      '<label>WhatsApp number <span class="hint">Optional, with country code</span><input type="tel" name="phone" value="' + esc(p.phone) + '" placeholder="+972..."><span class="field-error" data-err="phone"></span></label>' +
-      '<div class="checks"><label><input type="checkbox" name="show_phone" ' + (p.show_phone ? 'checked' : '') + '> Show a WhatsApp button on my profile</label></div>' +
-      '<div class="row-actions"><button class="btn gold" type="submit">Save profile</button><span class="inline-note">Your photo comes from your Google account.</span></div>' +
-      '</form><div class="sticky"><div class="eyebrow" style="margin-bottom:8px">How others see you</div><div class="card" id="preview"></div></div></div></div></section>';
+      '<label>WhatsApp number <span class="hint">Optional, with the country code</span><input type="tel" name="phone" value="' + esc(p.phone) + '" placeholder="+972..."><span class="field-error" data-err="phone"></span></label>' +
+      '<label class="check-line"><input type="checkbox" name="show_phone" ' + (p.show_phone ? 'checked' : '') + '> Show a WhatsApp button on my profile</label>' +
+      '<div class="row-actions"><button class="btn gold" type="submit">Save profile</button><span class="muted small">Your photo comes from your Google account.</span></div>' +
+      '</form><div class="sticky"><div class="preview-label">How others see you</div><div class="preview"><div class="sheet" id="preview"></div></div></div></div>');
   }
 
   function readProfileForm(f) {
@@ -423,7 +455,7 @@
       var v = Core.validateProfile(r.profile).value;
       v.photo = u.profile.photo;
       if (!v.show_phone) delete v.phone;
-      $('#preview').innerHTML = profileCard({ id: u.id, name: r.name || u.name, tier: u.tier, cohort: u.cohort, profile: v }, true);
+      $('#preview').innerHTML = profileSheet({ id: u.id, name: r.name || u.name, tier: u.tier, cohort: u.cohort, joined: true, profile: v }, true);
     }
     f.addEventListener('input', preview);
     preview();
@@ -477,8 +509,8 @@
   /* ---------- admin ---------- */
 
   function pageAdmin() {
-    if (state.me.tier !== 'leader') return section('<div class="note warn">Admin is for leaders only.</div>');
-    return '<section class="block"><div class="wrap"><div class="eyebrow">Admin · leaders only</div><h2>Who\'s in, and who sees what</h2><div id="adminBody">' + loading('Loading members') + '</div></div></section>';
+    if (state.me.tier !== 'leader') return page('<div class="note warn">Admin is for leaders only.</div>');
+    return page('<div class="page-head"><h1>Admin</h1><span class="count">Who\'s in, and who sees what</span></div><div id="adminBody">' + loading('Loading members') + '</div>');
   }
 
   async function wireAdmin() {
@@ -497,38 +529,36 @@
     };
     var pending = data.requests.filter(function (r) { return r.status === 'pending'; });
     var unclaimed = data.members.filter(function (m) { return !m.email; });
-    var cohorts = Array.from(new Set(data.members.map(function (m) { return m.cohort; }).filter(Boolean))).sort();
 
     var requestsHtml = pending.length ? pending.map(function (r) {
       var guess = bestMatch(r.name, unclaimed);
-      return '<div class="request" data-request="' + esc(r.id) + '"><div><b dir="auto">' + esc(r.name) + '</b> <span class="muted">' + esc(r.email) + '</span>' +
-        (r.note ? '<div class="inline-note" dir="auto">"' + esc(r.note) + '"</div>' : '') + '</div>' +
+      return '<div class="request" data-request="' + esc(r.id) + '"><div><span class="who" dir="auto">' + esc(r.name) + '</span> <span class="muted">' + esc(r.email) + '</span>' +
+        (r.note ? '<div class="muted small" dir="auto">"' + esc(r.note) + '"</div>' : '') + '</div>' +
         '<div class="row-actions"><select data-link aria-label="Link to"><option value="">Add as a new member</option>' +
-        unclaimed.map(function (m) { return '<option value="' + esc(m.id) + '" ' + (guess && guess.id === m.id ? 'selected' : '') + '>Link to ' + esc(m.name) + ' (' + esc(m.cohort || 'no cohort') + ')</option>'; }).join('') +
+        unclaimed.map(function (m) { return '<option value="' + esc(m.id) + '" ' + (guess && guess.id === m.id ? 'selected' : '') + '>Link to ' + esc(m.name) + (m.cohort ? ', ' + esc(cohortLabel(m.cohort)) : '') + '</option>'; }).join('') +
         '</select>' + tierSelect('data-new-tier aria-label="Tier for a new member"', 'community') +
-        '<button class="btn gold small" data-approve>Approve</button><button class="btn light small" data-decline>Decline</button></div></div>';
+        '<button class="btn gold small" data-approve>Approve</button><button class="btn quiet small" data-decline>Decline</button></div></div>';
     }).join('') : '<p class="muted">No requests waiting.</p>';
 
     $('#adminBody').innerHTML =
-      '<div class="admin-section"><h3>Access requests ' + (pending.length ? '<span class="badge">' + pending.length + '</span>' : '') + '</h3><div class="card">' + requestsHtml + '</div></div>' +
+      '<section class="admin-section" style="margin-top:8px"><h2>Access requests' + (pending.length ? ' <span class="badge">' + pending.length + '</span>' : '') + '</h2>' + requestsHtml + '</section>' +
 
-      '<div class="admin-section"><h3>Rules: who can see whom in the directory</h3><div class="table-wrap"><table class="matrix">' +
-      '<thead><tr><th>Viewer ↓ sees →</th>' + tiers.map(function (t) { return '<th>' + esc(TIER_LABEL[t]) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      '<section class="admin-section"><h2>Who sees whom in the directory</h2><div class="table-wrap matrix"><table class="matrix">' +
+      '<thead><tr><th>Viewer</th>' + tiers.map(function (t) { return '<th>Sees ' + esc(TIER_LABEL[t]) + '</th>'; }).join('') + '</tr></thead><tbody>' +
       tiers.map(function (v) {
-        return '<tr><td><b>' + esc(TIER_LABEL[v]) + '</b></td>' + tiers.map(function (s) {
+        return '<tr><td>' + esc(TIER_LABEL[v]) + '</td>' + tiers.map(function (s) {
           return '<td><input type="checkbox" aria-label="' + esc(TIER_LABEL[v] + ' sees ' + TIER_LABEL[s]) + '" data-rule="' + v + ':' + s + '" ' + (data.rules[v][s] ? 'checked' : '') + ' ' + (v === 'leader' ? 'disabled' : '') + '></td>';
         }).join('') + '</tr>';
-      }).join('') + '</tbody></table></div><p class="inline-note">Leaders always see everyone. Changes apply on each member\'s next page load.</p></div>' +
+      }).join('') + '</tbody></table></div><p class="muted small" style="margin-top:10px">Leaders always see everyone. Changes apply on each member\'s next page load.</p></section>' +
 
-      '<div class="admin-section"><h3>Add people</h3><div class="card form-grid">' +
-      '<label>One per line, as "Name, email". The email is optional: people without one can ask for access and you link them.<textarea id="bulk" rows="4" placeholder="Shir Amar, shir.amar@gmail.com&#10;Ben Tal"></textarea></label>' +
-      '<div class="row-actions"><label style="display:flex;gap:8px;align-items:center">Tier ' + tierSelect('id="bulkTier"', 'club') + '</label>' +
-      '<label style="display:flex;gap:8px;align-items:center">Cohort <input type="text" id="bulkCohort" list="cohortList" placeholder="2026-27" maxlength="20" style="width:110px"></label>' +
-      '<datalist id="cohortList">' + cohorts.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist>' +
-      '<button class="btn gold" id="bulkAdd">Add</button></div><div id="bulkResult"></div></div></div>' +
+      '<section class="admin-section"><h2>Add people</h2><div class="form-grid" style="max-width:720px">' +
+      '<label>One per line, as "Name, email" <span class="hint">The email is optional. People without one can ask for access and you link them.</span><textarea id="bulk" rows="4" placeholder="Shir Amar, shir.amar@gmail.com&#10;Ben Tal"></textarea></label>' +
+      '<div class="add-row"><label>Tier ' + tierSelect('id="bulkTier"', 'club') + '</label>' +
+      '<label>Cohort number <input type="text" id="bulkCohort" inputmode="numeric" placeholder="2" maxlength="20" style="width:120px"></label>' +
+      '<button class="btn gold" id="bulkAdd">Add</button></div><div id="bulkResult"></div></div></section>' +
 
-      '<div class="admin-section"><div class="dir-head"><h3 style="margin:0">Members (' + data.members.length + ')</h3><div class="row-actions">' +
-      '<input type="text" id="adminFilter" placeholder="Filter by name or email" aria-label="Filter members"><button class="btn light small" id="exportCsv">Export CSV</button></div></div>' +
+      '<section class="admin-section"><div class="page-head" style="margin-bottom:14px"><h2 style="font-size:1.75rem">Members</h2><span class="count">' + data.members.length + '</span><span class="spacer"></span>' +
+      '<input type="search" id="adminFilter" placeholder="Filter by name or email" aria-label="Filter members" style="max-width:260px"><button class="btn quiet small" id="exportCsv">Export CSV</button></div>' +
       '<div class="table-wrap"><table class="members-table"><thead><tr><th>Name</th><th>Google email</th><th>Tier</th><th>Cohort</th><th>Active</th><th></th></tr></thead><tbody>' +
       data.members.map(function (m) {
         var self = m.id === state.me.id;
@@ -536,10 +566,10 @@
           '<td><input type="text" data-f="name" value="' + esc(m.name) + '" maxlength="60" dir="auto" aria-label="Name"></td>' +
           '<td><input type="email" data-f="email" value="' + esc(m.email) + '" placeholder="Not linked yet" aria-label="Email"></td>' +
           '<td>' + tierSelect('data-f="tier" aria-label="Tier"' + (self ? ' disabled' : ''), m.tier) + '</td>' +
-          '<td><input type="text" data-f="cohort" value="' + esc(m.cohort) + '" maxlength="20" style="min-width:80px;width:90px" aria-label="Cohort"></td>' +
+          '<td><input type="text" data-f="cohort" value="' + esc(m.cohort) + '" maxlength="20" aria-label="Cohort"></td>' +
           '<td><input type="checkbox" data-f="active" aria-label="Active" ' + (m.active ? 'checked' : '') + (self ? ' disabled' : '') + '></td>' +
-          '<td><button class="btn light small" data-save>Save</button></td></tr>';
-      }).join('') + '</tbody></table></div></div>';
+          '<td><button class="btn quiet small" data-save>Save</button></td></tr>';
+      }).join('') + '</tbody></table></div></section>';
 
     $$('[data-rule]').forEach(function (c) {
       c.addEventListener('change', async function () {
@@ -581,7 +611,7 @@
         toast(r.added + ' added');
         await wireAdmin();
         if (r.skipped.length) {
-          $('#bulkResult').innerHTML = '<div class="note warn" style="margin-top:8px">Skipped:<br>' + r.skipped.map(function (s) { return esc(s.line) + ': ' + esc(s.reason); }).join('<br>') + '</div>';
+          $('#bulkResult').innerHTML = '<div class="note warn">Skipped:<br>' + r.skipped.map(function (s) { return esc(s.line) + ': ' + esc(s.reason); }).join('<br>') + '</div>';
         }
       } catch (err) { setBusy(btn, false); toast(err.message); }
     });
@@ -662,7 +692,7 @@
     renderNav(route);
     $('#nav').classList.remove('open');
     $('#menuBtn').setAttribute('aria-expanded', 'false');
-    closeModal();
+    closeSheet();
     var app = $('#app');
 
     if (MEMBER_ROUTES[route]) {
@@ -691,11 +721,12 @@
     window.scrollTo(0, 0);
   }
 
+  $('#menuBtn').innerHTML = icon('menu');
   $('#menuBtn').addEventListener('click', function () {
     var open = $('#nav').classList.toggle('open');
     $('#menuBtn').setAttribute('aria-expanded', String(open));
   });
   window.addEventListener('hashchange', render);
-  if (CONFIG.ENV !== 'production') $('#footer').textContent = 'The Masters Club · Reichman University · ' + CONFIG.ENV + ' build with test data';
+  if (CONFIG.ENV !== 'production') $('#envNote').textContent = CONFIG.ENV + ' build with test data';
   refreshMe();
 })();
