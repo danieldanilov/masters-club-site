@@ -105,7 +105,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: cente
 footer .logo { font-size: 1.05rem; color: var(--white); }
 footer .logo .mark { width: 40px; height: 18px; }
 .member-card .avatar, .person .avatar { margin-top: 2px; }
-footer a { color: var(--white); display: inline-block; padding: 11px 0; margin: -11px 0; }
+footer a { color: var(--white); display: inline-block; padding: 12px 0; margin: -12px 0; }
 footer .logo { padding: 9px 0; margin: -9px 0; }
 footer .spacer { margin-left: auto; }
 
