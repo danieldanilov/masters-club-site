@@ -1,4 +1,4 @@
-// The Masters Club site: hash routes, Google sign-in, directory, profile editor, admin.
+// The Masters Club site: hash routes, sign-in (Google or a code by email), directory, profile editor, admin.
 // Look and feel: docs/06-design.md.
 (function () {
   var $ = function (s, root) { return (root || document).querySelector(s); };
@@ -115,8 +115,14 @@
     return gsiReady;
   }
 
-  // Fills every .gsi-slot on the page with a sign-in button.
+  // Every place you can sign in: Google's button, then a code by email.
+  function signInBlock() {
+    return '<div class="signin"><div class="gsi-slot"></div><div class="or"><span>or</span></div><div class="code-slot"></div></div>';
+  }
+
+  // Fills every sign-in block on the page.
   function mountSignIn() {
+    $$('.code-slot').forEach(mountCode);
     var slots = $$('.gsi-slot');
     if (!slots.length) return;
     if (CONFIG.DEV_SIGNIN) {
@@ -155,25 +161,107 @@
   async function handleCredential(credential) {
     $('#app').innerHTML = loading('Signing you in');
     try {
-      var r = await Api.call('signIn', { credential: credential }, { session: '' });
-      if (r.status === 'member') {
-        Api.setSession(r.session);
-        Api.setGuest(null);
-        state.me = r.me;
-        state.directory = null;
-        toast('Welcome, ' + r.me.name.split(' ')[0]);
-        go(r.me.hasProfile ? '#/members' : '#/me');
-      } else if (r.status === 'inactive') {
-        go('#/denied?e=' + encodeURIComponent(r.email));
-      } else {
-        Api.setGuest(r.guest);
-        state.guest = { email: r.email, name: r.name, request: r.request };
-        go('#/request');
-      }
+      signedIn(await Api.call('signIn', { credential: credential }, { session: '' }));
     } catch (e) {
       $('#app').innerHTML = errorBlock(e);
       wireRetry();
     }
+  }
+
+  // Where a sign-in lands, by Google or by code: the directory, the inactive page, or the request form.
+  function signedIn(r) {
+    setPendingCode(null);
+    if (r.status === 'member') {
+      Api.setSession(r.session);
+      Api.setGuest(null);
+      state.me = r.me;
+      state.directory = null;
+      toast('Welcome, ' + r.me.name.split(' ')[0]);
+      go(r.me.hasProfile ? '#/members' : '#/me');
+    } else if (r.status === 'inactive') {
+      go('#/denied?e=' + encodeURIComponent(r.email));
+    } else {
+      Api.setGuest(r.guest);
+      state.guest = { email: r.email, name: r.name, request: r.request };
+      go('#/request');
+    }
+  }
+
+  /* ---------- sign-in by email code ---------- */
+
+  // The address a code went to, kept for the tab so the code step survives a reload.
+  var CODE_KEY = 'mc-code-v1';
+  function pendingCode() {
+    try {
+      var p = JSON.parse(sessionStorage.getItem(CODE_KEY) || 'null');
+      return p && Date.now() - p.at < Core.CODE_LIMITS.ttlMs ? p : null;
+    } catch (e) { return null; }
+  }
+  function setPendingCode(email) {
+    try {
+      if (email) sessionStorage.setItem(CODE_KEY, JSON.stringify({ email: email, at: Date.now() }));
+      else sessionStorage.removeItem(CODE_KEY);
+    } catch (e) { /* private mode */ }
+  }
+
+  function mountCode(slot) {
+    var p = pendingCode();
+    if (p) return codeStep(slot, p.email);
+    slot.innerHTML = '<form class="code-form" novalidate>' +
+      '<label>Your email<input type="email" name="email" autocomplete="email" required placeholder="you@example.com"><span class="field-error" data-err="email"></span></label>' +
+      '<button class="btn navy" type="submit">Email me a code</button></form>';
+    var f = $('form', slot);
+    f.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var btn = $('button[type=submit]', f);
+      var email = Core.normalizeEmail(new FormData(f).get('email'));
+      clearErrors(f);
+      setBusy(btn, true, 'Sending…');
+      try {
+        await Api.call('emailStart', { email: email }, { session: '' });
+        setPendingCode(email);
+        codeStep(slot, email);
+        $('input[name=code]', slot).focus();
+      } catch (err) {
+        setBusy(btn, false);
+        showErrors(f, err);
+      }
+    });
+  }
+
+  function codeStep(slot, email) {
+    slot.innerHTML = '<form class="code-form" novalidate>' +
+      '<p class="small" style="margin:0">We sent a code to <b>' + esc(email) + '</b>. It works for 10 minutes. If it isn\'t there, check spam.</p>' +
+      '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
+      '<button class="btn gold" type="submit">Sign in</button>' +
+      '<div class="code-links"><button class="link" type="button" data-resend>Send a new code</button><button class="link" type="button" data-change>Use another email</button></div></form>';
+    var f = $('form', slot);
+    f.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var btn = $('button[type=submit]', f);
+      clearErrors(f);
+      setBusy(btn, true, 'Checking…');
+      try {
+        signedIn(await Api.call('emailVerify', { email: email, code: new FormData(f).get('code') }, { session: '' }));
+      } catch (err) {
+        setBusy(btn, false);
+        showErrors(f, err);
+      }
+    });
+    $('[data-resend]', f).addEventListener('click', async function () {
+      clearErrors(f);
+      try {
+        await Api.call('emailStart', { email: email }, { session: '' });
+        setPendingCode(email);
+        toast('New code sent');
+      } catch (err) {
+        showErrors(f, err);
+      }
+    });
+    $('[data-change]', f).addEventListener('click', function () {
+      setPendingCode(null);
+      mountCode(slot);
+    });
   }
 
   function signOut() {
@@ -182,6 +270,7 @@
     state.me = null;
     state.directory = null;
     state.guest = null;
+    setPendingCode(null);
     if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
     toast('Signed out');
     go('#/');
@@ -281,20 +370,20 @@
     return page('<h1>Two ways in</h1><div class="paths">' +
       '<div><h2>Apply to a cohort</h2><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
       '<a class="btn gold" href="' + esc(CONTENT.applyUrl) + '" target="_blank" rel="noopener">Application form</a></div>' +
-      '<div><h2>Been through a cohort?</h2><p class="muted">You\'re in the community for life. Sign in with Google. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' +
-      '<div class="gsi-slot"></div></div></div>');
+      '<div><h2>Been through a cohort?</h2><p class="muted">You\'re in the community for life. Sign in with Google or with a code sent to your email. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' +
+      signInBlock() + '</div></div>');
   }
 
   function pageNeedLogin() {
     return page('<div class="panel"><div class="inner"><h1>Members only</h1>' +
-      '<p class="muted" style="margin:0">Sign in with your Google account. No new password, and you stay signed in for 30 days.</p><div class="gsi-slot"></div></div></div>');
+      '<p class="muted" style="margin:0">Sign in with Google, or get a code by email. No password, and you stay signed in for 30 days.</p>' + signInBlock() + '</div></div>');
   }
 
   function pageDenied(email) {
     return page('<div class="panel"><div class="inner"><h1>Can\'t get in?</h1>' +
       '<p><b>' + esc(email || 'This account') + '</b> is on the list but marked inactive.</p>' +
-      '<p class="muted" style="margin:0">Ask one of the leaders on WhatsApp to reactivate you, or sign in with another Google account.</p>' +
-      '<div class="gsi-slot"></div></div></div>');
+      '<p class="muted" style="margin:0">Ask one of the leaders on WhatsApp to reactivate you, or sign in with another account.</p>' +
+      signInBlock() + '</div></div>');
   }
 
   /* ---------- access request (guests) ---------- */
@@ -305,7 +394,7 @@
     if (g.request && g.request.status === 'pending') {
       return page('<div class="panel"><div class="inner"><h1>You\'re on the waiting list</h1>' +
         '<p class="muted">We got your request for <b>' + esc(g.email) + '</b>. A leader will link it to your name, and then you can sign in. Nothing else to do.</p>' +
-        '<button class="btn quiet" data-signout-guest>Use another Google account</button></div></div>');
+        '<button class="btn quiet" data-signout-guest>Use another account</button></div></div>');
     }
     return page('<div class="panel"><div class="inner"><h1>We don\'t have this email yet</h1>' +
       '<p class="muted">You signed in as <b>' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name.</p>' +
@@ -460,7 +549,7 @@
       '<label>LinkedIn URL<input type="url" name="linkedin" value="' + esc(p.linkedin) + '" placeholder="https://www.linkedin.com/in/..."><span class="field-error" data-err="linkedin"></span></label>' +
       '<label>WhatsApp number <span class="hint">Optional, with the country code</span><input type="tel" name="phone" value="' + esc(p.phone) + '" placeholder="+972..."><span class="field-error" data-err="phone"></span></label>' +
       '<label class="check-line"><input type="checkbox" name="show_phone" ' + (p.show_phone ? 'checked' : '') + '> Show a WhatsApp button on my profile</label>' +
-      '<div class="row-actions"><button class="btn gold" type="submit">Save profile</button><span class="muted small">Your photo comes from your Google account.</span></div>' +
+      '<div class="row-actions"><button class="btn gold" type="submit">Save profile</button><span class="muted small">Your photo comes from your Google account when you sign in with Google.</span></div>' +
       '</form><div class="sticky"><div class="preview-label">How others see you</div><div class="preview"><div class="sheet" id="preview"></div></div></div></div>');
   }
 

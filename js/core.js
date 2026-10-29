@@ -15,6 +15,10 @@ var Core = (function () {
     club: { leader: true, club: true, community: false },
     community: { leader: true, club: true, community: true }
   };
+  // Sign-in codes sent by email. A code lasts 10 minutes and allows 5 tries. Each address gets
+  // a code at most every 30 seconds and 3 in 6 hours; addresses not on the list share 20 in
+  // 6 hours, and get none once the day's mail is down to the last 20 (kept for members).
+  var CODE_LIMITS = { ttlMs: 10 * 60 * 1000, maxTries: 5, gapMs: 30 * 1000, perWindow: 3, windowMs: 6 * 60 * 60 * 1000, strangersPerWindow: 20, quotaReserve: 20 };
   var PROFILE_FIELDS = ['role', 'company', 'industry', 'help', 'looking', 'open_to', 'linkedin', 'phone', 'show_phone', 'bio', 'photo'];
 
   function toBool(v) {
@@ -164,7 +168,7 @@ var Core = (function () {
       name: str(member.name),
       tier: member.tier,
       cohort: str(member.cohort),
-      joined: !!normalizeEmail(member.email),
+      joined: !!str(member.joined_on),
       profile: publicProfile(profile)
     };
     if (includePrivate) {
@@ -244,6 +248,27 @@ var Core = (function () {
     return { rows: rows, skipped: skipped };
   }
 
+  /* ---------- email codes ---------- */
+
+  // Six digits from at least 48 bits of random hex (a UUID from Utilities.getUuid).
+  function makeCode(hex) {
+    var h = str(hex).slice(0, 12);
+    if (!/^[0-9a-f]{12}$/i.test(h)) throw new Error('makeCode needs 12 random hex digits');
+    var n = String(parseInt(h, 16) % 1000000);
+    while (n.length < 6) n = '0' + n;
+    return n;
+  }
+
+  // state: {first, n, last} for one sender in the current window, or null. Returns ok, the
+  // state to store if sent, and when refused, the seconds until the next send is allowed.
+  function codeThrottle(state, now, allowance) {
+    var L = CODE_LIMITS;
+    if (!state || !(now - state.first < L.windowMs)) return { ok: true, next: { first: now, n: 1, last: now } };
+    if (now - state.last < L.gapMs) return { ok: false, waitSeconds: Math.ceil((state.last + L.gapMs - now) / 1000) };
+    if (state.n >= allowance) return { ok: false, waitSeconds: Math.ceil((state.first + L.windowMs - now) / 1000) };
+    return { ok: true, next: { first: state.first, n: state.n + 1, last: now } };
+  }
+
   /* ---------- sheet and csv safety ---------- */
 
   function sanitizeCell(v) {
@@ -308,6 +333,7 @@ var Core = (function () {
     LIMITS: LIMITS,
     DEFAULT_RULES: DEFAULT_RULES,
     PROFILE_FIELDS: PROFILE_FIELDS,
+    CODE_LIMITS: CODE_LIMITS,
     toBool: toBool,
     isTier: isTier,
     normalizeRules: normalizeRules,
@@ -325,6 +351,8 @@ var Core = (function () {
     cohortLabel: cohortLabel,
     searchMembers: searchMembers,
     parseMemberLines: parseMemberLines,
+    makeCode: makeCode,
+    codeThrottle: codeThrottle,
     sanitizeCell: sanitizeCell,
     toCsv: toCsv,
     escapeHtml: escapeHtml,
