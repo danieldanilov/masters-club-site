@@ -455,12 +455,7 @@
       cohorts.map(function (c) { return '<option value="' + esc(c) + '" ' + (s.cohort === c ? 'selected' : '') + '>' + esc(cohortLabel(c)) + '</option>'; }).join('') + '</select>' +
       '<select id="fIndustry" aria-label="Industry"><option value="">All industries</option>' + Core.INDUSTRIES.map(function (i) { return '<option ' + (s.industry === i ? 'selected' : '') + '>' + esc(i) + '</option>'; }).join('') + '</select>' +
       Core.OPEN_TO.map(function (o) { return '<button class="chip ' + (s.open.indexOf(o) !== -1 ? 'on' : '') + '" data-open="' + esc(o) + '" aria-pressed="' + (s.open.indexOf(o) !== -1) + '">' + esc(o) + '</button>'; }).join('') +
-      '</div><p class="result-note" id="resultNote" hidden></p><div class="results" id="results"></div>' +
-      '<section class="wa"><h2>Chat, events and jobs happen on WhatsApp</h2><p class="muted" style="margin:0">The directory is for finding people. Everything else stays in the club\'s groups.</p><ul>' +
-      CONTENT.whatsappGroups.map(function (g) {
-        return '<li>' + icon('chat') + '<span class="grow">' + esc(g.name) + '</span>' +
-          (g.url ? '<a class="btn quiet small" href="' + esc(g.url) + '" target="_blank" rel="noopener">Open in WhatsApp</a>' : '<span class="muted small">Ask a leader for the link</span>') + '</li>';
-      }).join('') + '</ul></section>';
+      '</div><p class="result-note" id="resultNote" hidden></p><div class="results" id="results"></div>';
 
     function draw() {
       var filters = { cohort: s.cohort, industry: s.industry, open: s.open };

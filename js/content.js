@@ -97,12 +97,5 @@ var CONTENT = {
     { name: 'Partner', price: '₪10,000', detail: 'Logo on the site and event materials, and a session with the cohort.' },
     { name: 'Gold partner', price: '₪20,000', detail: 'Everything in Partner, plus hosting a meeting and a members spotlight.' },
     { name: 'Diamond partner', price: '₪35,000+', detail: 'Everything in Gold for three years, plus a recruiting session.' }
-  ],
-
-  // Add an invite link to show a button; leave it empty to show "ask a leader".
-  whatsappGroups: [
-    { name: 'Announcements', url: '' },
-    { name: 'Jobs and opportunities', url: '' },
-    { name: 'Community lounge', url: '' }
   ]
 };
