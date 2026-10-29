@@ -137,7 +137,7 @@
     loadGoogle().then(function () {
       slots.forEach(function (slot) {
         slot.innerHTML = '';
-        google.accounts.id.renderButton(slot, { theme: slot.dataset.theme || 'outline', size: 'large', shape: 'rectangular', text: 'signin_with', width: 280 });
+        google.accounts.id.renderButton(slot, { theme: slot.dataset.theme || 'outline', size: 'large', shape: 'rectangular', text: 'signin_with', width: 280, locale: 'en' });
       });
     }).catch(function (e) {
       slots.forEach(function (slot) { slot.innerHTML = '<div class="note warn">' + esc(e.message) + '. Turn off blockers for this site and reload.</div>'; });
@@ -592,11 +592,11 @@
       data.members.map(function (m) {
         var self = m.id === state.me.id;
         return '<tr data-member="' + esc(m.id) + '" data-search="' + esc((m.name + ' ' + m.email).toLowerCase()) + '">' +
-          '<td><input type="text" data-f="name" value="' + esc(m.name) + '" maxlength="60" dir="auto" aria-label="Name"></td>' +
-          '<td><input type="email" data-f="email" value="' + esc(m.email) + '" placeholder="Not linked yet" aria-label="Email"></td>' +
-          '<td>' + tierSelect('data-f="tier" aria-label="Tier"' + (self ? ' disabled' : ''), m.tier) + '</td>' +
-          '<td><input type="text" data-f="cohort" value="' + esc(m.cohort) + '" maxlength="20" aria-label="Cohort"></td>' +
-          '<td><input type="checkbox" data-f="active" aria-label="Active" ' + (m.active ? 'checked' : '') + (self ? ' disabled' : '') + '></td>' +
+          '<td><span class="cell-label" aria-hidden="true">Name</span><input type="text" data-f="name" value="' + esc(m.name) + '" maxlength="60" dir="auto" aria-label="Name"></td>' +
+          '<td><span class="cell-label" aria-hidden="true">Google email</span><input type="email" data-f="email" value="' + esc(m.email) + '" placeholder="Not linked yet" aria-label="Email"></td>' +
+          '<td><span class="cell-label" aria-hidden="true">Tier</span>' + tierSelect('data-f="tier" aria-label="Tier"' + (self ? ' disabled' : ''), m.tier) + '</td>' +
+          '<td><span class="cell-label" aria-hidden="true">Cohort</span><input type="text" data-f="cohort" value="' + esc(m.cohort) + '" maxlength="20" aria-label="Cohort"></td>' +
+          '<td><label class="active-cell"><input type="checkbox" data-f="active" aria-label="Active" ' + (m.active ? 'checked' : '') + (self ? ' disabled' : '') + '><span class="cell-label" aria-hidden="true">Active</span></label></td>' +
           '<td><button class="btn quiet small" data-save>Save</button></td></tr>';
       }).join('') + '</tbody></table></div></section>';
 
@@ -719,8 +719,7 @@
     var route = parts[0];
     var params = new URLSearchParams(parts[1] || '');
     renderNav(route);
-    $('#nav').classList.remove('open');
-    $('#menuBtn').setAttribute('aria-expanded', 'false');
+    setMenu(false);
     closeSheet();
     var app = $('#app');
 
@@ -754,11 +753,13 @@
     window.scrollTo(0, 0);
   }
 
-  $('#menuBtn').innerHTML = icon('menu');
-  $('#menuBtn').addEventListener('click', function () {
-    var open = $('#nav').classList.toggle('open');
+  function setMenu(open) {
+    $('#nav').classList.toggle('open', open);
+    document.body.classList.toggle('menu-open', open);
     $('#menuBtn').setAttribute('aria-expanded', String(open));
-  });
+    $('#menuBtn').innerHTML = icon(open ? 'close' : 'menu');
+  }
+  $('#menuBtn').addEventListener('click', function () { setMenu(!$('#nav').classList.contains('open')); });
   window.addEventListener('hashchange', render);
   if (CONFIG.ENV !== 'production') $('#envNote').textContent = CONFIG.ENV + ' build with test data';
   refreshMe();

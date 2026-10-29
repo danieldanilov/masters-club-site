@@ -78,7 +78,7 @@ header.top .wrap { display: flex; align-items: center; gap: 24px; height: 68px; 
 .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; font-family: var(--display); font-size: 1.3rem; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
 .logo .mark { width: 62px; height: 28px; flex: none; background: currentColor; -webkit-mask: url(../img/brand/ma.svg) center / contain no-repeat; mask: url(../img/brand/ma.svg) center / contain no-repeat; }
 /* The gold rule under the MA, as on the official lockup. */
-header.top .logo { flex-direction: column; align-items: stretch; gap: 5px; }
+header.top .logo { flex-direction: column; align-items: stretch; gap: 5px; padding: 5px 0; }
 header.top .logo::after { content: ""; height: 2px; background: var(--gold); transform-origin: left; transition: transform .25s ease; }
 header.top .logo:hover::after { transform: scaleX(0.55); }
 nav.main { display: flex; gap: 4px; margin-left: auto; align-items: center; }
@@ -86,15 +86,18 @@ nav.main a { text-decoration: none; padding: 8px 12px; font-size: 0.97rem; color
 nav.main a:hover { color: var(--white); }
 nav.main a.active { color: var(--white); text-decoration: underline; text-decoration-color: var(--gold); text-decoration-thickness: 2px; text-underline-offset: 8px; }
 nav.main a.btn { color: var(--navy); margin-left: 10px; text-decoration: none; }
-.menu-btn { display: none; margin-left: auto; background: none; border: 0; color: var(--white); padding: 8px; border-radius: var(--radius); cursor: pointer; }
+.menu-btn { display: none; margin-left: auto; background: none; border: 0; color: var(--white); width: 44px; height: 44px; margin-right: -10px; align-items: center; justify-content: center; border-radius: var(--radius); cursor: pointer; }
 .menu-btn .icon { width: 24px; height: 24px; }
 @media (max-width: 820px) {
   .menu-btn { display: inline-flex; }
-  nav.main { display: none; position: absolute; top: 68px; left: 0; right: 0; background: var(--navy); flex-direction: column; align-items: stretch; padding: 4px var(--gutter) 18px; gap: 0; }
+  /* The open menu covers the page under the header, so nothing shows through below it. */
+  nav.main { display: none; position: fixed; top: 68px; bottom: 0; left: 0; right: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--navy); flex-direction: column; align-items: stretch; padding: 0 var(--gutter) 32px; gap: 0; }
+  nav.main::before { content: ""; flex: none; height: 8px; margin: 0 calc(-1 * var(--gutter)) 12px; background: var(--tie-small); }
   nav.main.open { display: flex; }
   nav.main a { padding: 12px 4px; font-size: 1.05rem; }
   nav.main a.active { text-underline-offset: 6px; }
-  nav.main a.btn { margin: 10px 0 0; justify-content: center; }
+  nav.main a.btn { margin: 14px 0 0; justify-content: center; }
+  body.menu-open { overflow: hidden; }
 }
 
 footer { background: var(--navy); color: var(--on-navy); font-size: var(--s-small); margin-top: 96px; }
@@ -102,21 +105,23 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: cente
 footer .logo { font-size: 1.05rem; color: var(--white); }
 footer .logo .mark { width: 40px; height: 18px; }
 .member-card .avatar, .person .avatar { margin-top: 2px; }
-footer a { color: var(--white); }
+footer a { color: var(--white); display: inline-block; padding: 11px 0; margin: -11px 0; }
+footer .logo { padding: 9px 0; margin: -9px 0; }
 footer .spacer { margin-left: auto; }
 
 /* ---------- buttons and controls ---------- */
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--radius); padding: 11px 20px; font-family: var(--text); font-weight: 600; font-size: 0.98rem; line-height: 1.2; border: 0; cursor: pointer; text-decoration: none; transition: background-color .15s ease, color .15s ease; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: var(--radius); padding: 11px 20px; font-family: var(--text); font-weight: 600; font-size: 0.98rem; line-height: 1.2; border: 0; cursor: pointer; text-decoration: none; transition: background-color .15s ease, color .15s ease; }
 .btn.gold { background: var(--gold); color: var(--navy); }
 .btn.gold:hover { background: var(--gold-deep); }
 .btn.navy { background: var(--navy); color: var(--white); }
 .btn.navy:hover { background: var(--navy-2); }
 .btn.quiet { background: var(--mist); color: var(--ink); }
 .btn.quiet:hover { background: var(--mist-2); }
-.btn.small { padding: 7px 13px; font-size: 0.9rem; }
+.btn.small { padding: 7px 13px; font-size: 0.9rem; min-height: 38px; }
+@media (max-width: 820px) { .btn.small { min-height: 44px; } }
 .btn[disabled] { opacity: .55; cursor: default; }
-.link { background: none; border: 0; padding: 0; cursor: pointer; font-weight: 600; text-decoration: underline; text-decoration-color: var(--gold); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.link { display: inline-block; background: none; border: 0; padding: 9px 0; margin: -9px 0; cursor: pointer; font-weight: 600; text-decoration: underline; text-decoration-color: var(--gold); text-decoration-thickness: 2px; text-underline-offset: 5px; }
 .on-navy .link { color: var(--white); }
 
 input[type=text], input[type=url], input[type=tel], input[type=email], input[type=search], textarea, select {
@@ -324,7 +329,7 @@ input.search { min-height: 56px; padding-left: 48px; font-size: 1.08rem; }
 .checks label { display: inline-flex; gap: 10px; align-items: center; min-height: 44px; padding: 0 14px; background: var(--mist); border-radius: var(--radius); cursor: pointer; font-weight: 600; }
 .checks label:has(input:checked) { background: var(--navy); color: var(--white); }
 .checks label:has(input:checked) input { accent-color: var(--gold); }
-.check-line { display: flex; gap: 10px; align-items: center; font-weight: 500; cursor: pointer; }
+.check-line, .form-grid > label.check-line { display: flex; gap: 10px; align-items: center; min-height: 44px; font-weight: 500; cursor: pointer; }
 .field-error { color: var(--danger); font-size: 0.88rem; font-weight: 600; }
 .field-error:empty { display: none; }
 .has-error input, .has-error textarea, .has-error select { border-color: var(--danger); background: var(--danger-bg); }
@@ -352,6 +357,22 @@ td input[type=text], td input[type=email], td select { background-color: var(--w
 .members-table td:nth-child(1) input { min-width: 170px; }
 .members-table td:nth-child(2) input { min-width: 220px; }
 .members-table td:nth-child(4) input { width: 72px; }
+.members-table .cell-label { display: none; }
+.members-table .active-cell { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+@media (max-width: 640px) {
+  .members-table thead { display: none; }
+  .members-table, .members-table tbody { display: block; }
+  .members-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; margin-bottom: 8px; background: var(--mist); border-radius: var(--radius); }
+  .members-table td { display: block; padding: 0; background: none !important; white-space: normal; }
+  .members-table td:nth-child(-n+2) { grid-column: 1 / -1; }
+  .members-table td:nth-child(5) { align-self: center; }
+  .members-table td:nth-child(6) { align-self: end; justify-self: end; }
+  .members-table td input[type=text], .members-table td input[type=email], .members-table td select { width: 100%; min-width: 0 !important; min-height: 44px; }
+  .members-table .cell-label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+  .members-table .active-cell { min-height: 44px; }
+  .members-table [data-save] { background: var(--white); }
+  .members-table .active-cell .cell-label { margin: 0; order: 2; color: var(--ink); font-size: 0.95rem; }
+}
 .matrix { max-width: 640px; }
 .matrix td, .matrix th { text-align: center; }
 .matrix td:first-child, .matrix th:first-child { text-align: left; font-weight: 700; }
