@@ -17,7 +17,7 @@ var App = (function () {
     publicInfo: null   // live data for the public pages
   };
   var routes = {};
-  var current = null;
+  var drawFailed = false;
 
   /* ---------- icons (one stroke family, drawn here) ---------- */
 
@@ -174,7 +174,8 @@ var App = (function () {
     saveData();
     var fetched = await fetchPhotos();
     renderNav(routeOf().route);
-    if (before !== JSON.stringify(state.data) || fetched) notifyPage();
+    if (drawFailed) render();
+    else if (before !== JSON.stringify(state.data) || fetched) notifyPage();
   }
 
   function notifyPage() {
@@ -489,9 +490,19 @@ var App = (function () {
       });
       return;
     } else {
-      app.innerHTML = r.page(at.params);
-      if (r.wire && r.wire(at.params) === 'keep-scroll') { mountSignIn(); return; }
+      try {
+        app.innerHTML = r.page(at.params);
+        if (r.wire && r.wire(at.params) === 'keep-scroll') { mountSignIn(); return; }
+      } catch (e) {
+        // A page never stays stuck: say so, and the fresh data gets a chance to fix it.
+        console.error(e);
+        drawFailed = true;
+        app.innerHTML = errorBlock({ message: "This page couldn't open. Try again in a moment." });
+        wireRetry();
+        return;
+      }
     }
+    drawFailed = false;
     mountSignIn();
     window.scrollTo(0, 0);
   }
