@@ -8,8 +8,8 @@ var Core = (function () {
   var TIER_LABEL = { leader: 'Leader', club: 'Club', community: 'Community' };
   var INDUSTRIES = ['SaaS', 'Fintech', 'Cyber', 'Gaming', 'Health', 'Consulting', 'Venture capital',
     'Real estate', 'Media', 'Finance', 'Retail', 'Education', 'Government', 'Other'];
-  var OPEN_TO = ['Coffee chats', 'Mentoring', 'Hiring', 'Collaborating'];
-  var LIMITS = { name: 60, role: 60, company: 60, bio: 280, tag: 40, tags: 6, note: 280, linkedin: 200 };
+  var OPEN_TO = ['Coffee chats', 'Mentoring', 'Hiring', 'Job hunting', 'Collaborating', 'Hosting a dinner'];
+  var LIMITS = { name: 60, role: 60, company: 60, city: 60, program: 100, bio: 280, tag: 40, tags: 6, note: 280, linkedin: 200, title: 120, place: 120, details: 2000, price: 40, recap: 1000, url: 500, contact: 120 };
   var DEFAULT_RULES = {
     leader: { leader: true, club: true, community: true },
     club: { leader: true, club: true, community: false },
@@ -19,7 +19,14 @@ var Core = (function () {
   // a code at most every 30 seconds and 3 in 6 hours; addresses not on the list share 20 in
   // 6 hours, and get none once the day's mail is down to the last 20 (kept for members).
   var CODE_LIMITS = { ttlMs: 10 * 60 * 1000, maxTries: 5, gapMs: 30 * 1000, perWindow: 3, windowMs: 6 * 60 * 60 * 1000, strangersPerWindow: 20, quotaReserve: 20 };
-  var PROFILE_FIELDS = ['role', 'company', 'industry', 'help', 'looking', 'open_to', 'linkedin', 'phone', 'show_phone', 'bio', 'photo'];
+  var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'hidden', 'bio', 'photo'];
+  // Adding a kind of event or post is one line here; the forms and pages read these lists.
+  var EVENT_KINDS = { meeting: 'Meeting', meetup: 'Meetup', dinner: 'Dinner', external: 'Outside event' };
+  var POST_KINDS = { job: 'Job', opportunity: 'Opportunity', ask: 'Ask', resource: 'Resource', partner: 'From a partner' };
+  var LEADER_POST_KINDS = ['partner'];
+  var POST_DAYS = 60;
+  var STALE_DAYS = 180;
+  var TIME_ZONE = 'Asia/Jerusalem';
 
   function toBool(v) {
     if (v === true || v === 1) return true;
@@ -102,10 +109,13 @@ var Core = (function () {
     var out = {
       role: str(p.role),
       company: str(p.company),
+      city: str(p.city),
+      program: str(p.program),
       industry: str(p.industry),
       help: splitList(p.help),
       looking: splitList(p.looking),
       open_to: splitList(p.open_to),
+      interests: splitList(p.interests),
       linkedin: str(p.linkedin),
       bio: str(p.bio),
       photo: str(p.photo)
@@ -129,7 +139,7 @@ var Core = (function () {
     input = input || {};
     var errors = {};
     var v = {};
-    ['role', 'company'].forEach(function (f) {
+    ['role', 'company', 'city', 'program'].forEach(function (f) {
       v[f] = str(input[f]);
       if (v[f].length > LIMITS[f]) errors[f] = 'Up to ' + LIMITS[f] + ' characters';
     });
@@ -139,7 +149,7 @@ var Core = (function () {
     v.industry = str(input.industry);
     if (v.industry && INDUSTRIES.indexOf(v.industry) === -1) errors.industry = 'Pick one from the list';
 
-    ['help', 'looking'].forEach(function (f) {
+    ['help', 'looking', 'interests'].forEach(function (f) {
       v[f] = splitList(input[f]);
       if (v[f].length > LIMITS.tags) errors[f] = 'Up to ' + LIMITS.tags + ' items';
       else if (v[f].some(function (t) { return t.length > LIMITS.tag; })) errors[f] = 'Each item up to ' + LIMITS.tag + ' characters';
@@ -155,6 +165,8 @@ var Core = (function () {
     v.phone = rawPhone.replace(/[\s\-().]/g, '');
     if (v.phone && !/^\+?\d{7,15}$/.test(v.phone)) errors.phone = 'Digits only, with the country code, like +972501234567';
     v.show_phone = toBool(input.show_phone) && !!v.phone;
+    v.show_email = toBool(input.show_email);
+    v.hidden = toBool(input.hidden);
 
     var ok = Object.keys(errors).length === 0;
     return { ok: ok, value: v, errors: errors };
@@ -171,6 +183,7 @@ var Core = (function () {
       joined: !!str(member.joined_on),
       profile: publicProfile(profile)
     };
+    if (profile && toBool(profile.show_email) && normalizeEmail(member.email)) e.profile.email = normalizeEmail(member.email);
     if (includePrivate) {
       e.email = normalizeEmail(member.email);
       e.active = toBool(member.active);
@@ -181,7 +194,11 @@ var Core = (function () {
   function buildDirectory(members, profilesById, rules, viewer) {
     if (!viewer || !toBool(viewer.active) || !isTier(viewer.tier)) return { members: [], hiddenTiers: TIERS.slice() };
     var list = (members || [])
-      .filter(function (m) { return toBool(m.active) && canSee(rules, viewer.tier, m.tier); })
+      .filter(function (m) {
+        if (!toBool(m.active) || !canSee(rules, viewer.tier, m.tier)) return false;
+        var p = (profilesById || {})[m.id];
+        return !(p && toBool(p.hidden)) || viewer.tier === 'leader' || viewer.id === m.id;
+      })
       .map(function (m) { return directoryEntry(m, (profilesById || {})[m.id], false); })
       .sort(function (a, b) { return a.name.localeCompare(b.name); });
     return { members: list, hiddenTiers: hiddenTiers(rules, viewer.tier) };
@@ -197,8 +214,8 @@ var Core = (function () {
   function searchText(m) {
     var p = m.profile || {};
     return [m.name, cohortLabel(m.cohort), TIER_LABEL[m.tier] || m.tier, m.joined === false ? 'not signed in yet' : '',
-      p.role, p.company, p.industry, p.bio]
-      .concat(p.help || [], p.looking || [], p.open_to || [])
+      p.role, p.company, p.city, p.program, p.industry, p.bio]
+      .concat(p.help || [], p.looking || [], p.open_to || [], p.interests || [])
       .join(' \n ').toLowerCase();
   }
 
@@ -225,7 +242,295 @@ var Core = (function () {
     return scored.map(function (s) { return s.m; });
   }
 
+  /* ---------- dates, links, audiences ---------- */
+
+  function isDate(s) {
+    s = str(s);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    var d = new Date(s + 'T00:00:00Z');
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+  }
+
+  function isTime(s) {
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(str(s));
+  }
+
+  function isHttps(url) {
+    url = str(url);
+    return /^https:\/\/[^\s"'<>]+$/.test(url) && url.length <= LIMITS.url;
+  }
+
+  function addDays(iso, days) {
+    return new Date(new Date(iso + 'T00:00:00Z').getTime() + days * 86400000).toISOString().slice(0, 10);
+  }
+
+  function weekday(iso) {
+    return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(iso + 'T00:00:00Z').getUTCDay()];
+  }
+
+  // Who a post or event is for. "club" and "community" are exact, so each can have its own
+  // things; "all" is everyone; "cohort:2" is one cohort. Leaders see everything.
+  function isAudience(a) {
+    return ['all', 'club', 'community', 'leaders'].indexOf(a) !== -1 || /^cohort:[\w-]{1,20}$/.test(str(a));
+  }
+
+  function inAudience(audience, member) {
+    if (member.tier === 'leader') return true;
+    if (audience === 'all') return true;
+    if (audience === 'club' || audience === 'community') return member.tier === audience;
+    var m = /^cohort:(.+)$/.exec(str(audience));
+    return !!m && str(member.cohort) === m[1];
+  }
+
+  /* ---------- events ---------- */
+
+  function wholeNumber(v, min) {
+    var s = str(v);
+    return s === '' || (/^\d+$/.test(s) && Number(s) >= min);
+  }
+
+  function validateEvent(input) {
+    input = input || {};
+    var e = {};
+    var v = {};
+    v.title = str(input.title);
+    if (!v.title) e.title = 'Give it a title';
+    else if (v.title.length > LIMITS.title) e.title = 'Up to ' + LIMITS.title + ' characters';
+    v.date = str(input.date);
+    if (!isDate(v.date)) e.date = 'Pick a date';
+    v.time = str(input.time);
+    if (!isTime(v.time)) e.time = 'Pick a time';
+    v.end_time = str(input.end_time);
+    if (v.end_time && !isTime(v.end_time)) e.end_time = 'Pick a time';
+    v.place = str(input.place);
+    if (v.place.length > LIMITS.place) e.place = 'Up to ' + LIMITS.place + ' characters';
+    v.details = str(input.details);
+    if (v.details.length > LIMITS.details) e.details = 'Up to ' + LIMITS.details + ' characters';
+    v.recap = str(input.recap);
+    if (v.recap.length > LIMITS.recap) e.recap = 'Up to ' + LIMITS.recap + ' characters';
+    v.price = str(input.price);
+    if (v.price.length > LIMITS.price) e.price = 'Up to ' + LIMITS.price + ' characters';
+    ['map_url', 'pay_url', 'poster'].forEach(function (f) {
+      v[f] = str(input[f]);
+      if (v[f] && !isHttps(v[f])) e[f] = 'Use an https:// link';
+    });
+    v.audience = str(input.audience) || 'all';
+    if (!isAudience(v.audience)) e.audience = 'Pick who it is for';
+    v.kind = str(input.kind) || 'meetup';
+    if (!Object.prototype.hasOwnProperty.call(EVENT_KINDS, v.kind)) e.kind = 'Pick a kind';
+    ['seats', 'community_seats'].forEach(function (f) {
+      v[f] = str(input[f]);
+      if (!wholeNumber(v[f], 0)) e[f] = 'A whole number, or leave it empty';
+    });
+    v.group_size = str(input.group_size);
+    if (!wholeNumber(v.group_size, 2)) e.group_size = 'At least 2, or leave it empty';
+    v.rsvp = str(input.rsvp) === 'closed' ? 'closed' : 'open';
+    v.rsvp_closes = str(input.rsvp_closes);
+    if (v.rsvp_closes && !(isDate(v.rsvp_closes.slice(0, 10)) && isTime(v.rsvp_closes.slice(11)))) e.rsvp_closes = 'Pick a date and time';
+    v.public = toBool(input.public);
+    return { ok: Object.keys(e).length === 0, value: v, errors: e };
+  }
+
+  function goingRows(rows) {
+    return rows.filter(function (r) { return r.status === 'going'; });
+  }
+
+  // "going" if a seat is free for this member right now, else "waitlist". Community seats are
+  // the first-come allowance on club meetings; seats is the room's total.
+  function seatFor(event, rows, member) {
+    var going = goingRows(rows);
+    if (str(event.seats) !== '' && going.length >= Number(event.seats)) return 'waitlist';
+    if (member.tier === 'community' && str(event.community_seats) !== '' &&
+        going.filter(function (r) { return r.tier === 'community'; }).length >= Number(event.community_seats)) return 'waitlist';
+    return 'going';
+  }
+
+  function nextOffWaitlist(event, rows) {
+    var queue = rows.filter(function (r) { return r.status === 'waitlist'; })
+      .sort(function (a, b) { return String(a.at).localeCompare(String(b.at)); });
+    for (var i = 0; i < queue.length; i++) if (seatFor(event, rows, queue[i]) === 'going') return queue[i];
+    return null;
+  }
+
+  // now is {date, time} in Israel, so everything compares as plain local text.
+  function signupState(event, now) {
+    var at = now.date + 'T' + now.time;
+    if (event.status === 'cancelled') return { open: false, reason: 'Cancelled' };
+    if (event.date + 'T' + (event.time || '23:59') <= at) return { open: false, reason: 'This has passed' };
+    if (event.rsvp === 'closed') return { open: false, reason: 'Sign-up is not open yet' };
+    if (str(event.rsvp_closes) && event.rsvp_closes <= at) return { open: false, reason: 'Sign-up has closed' };
+    return { open: true, reason: '' };
+  }
+
+  // Deals people into even groups of at most size, cohort by cohort, so tables mix.
+  function makeGroups(people, size) {
+    var sorted = people.slice().sort(function (a, b) { return String(a.cohort).localeCompare(String(b.cohort)) || String(a.member_id).localeCompare(String(b.member_id)); });
+    var groups = Math.max(1, Math.ceil(sorted.length / size));
+    var out = {};
+    sorted.forEach(function (p, i) { out[p.member_id] = 'Group ' + ((i % groups) + 1); });
+    return out;
+  }
+
+  /* ---------- board ---------- */
+
+  function validatePost(input) {
+    input = input || {};
+    var e = {};
+    var v = {};
+    v.kind = str(input.kind);
+    if (!Object.prototype.hasOwnProperty.call(POST_KINDS, v.kind)) e.kind = 'Pick a kind';
+    v.title = str(input.title);
+    if (!v.title) e.title = 'Give it a title';
+    else if (v.title.length > LIMITS.title) e.title = 'Up to ' + LIMITS.title + ' characters';
+    ['company', 'location'].forEach(function (f) {
+      v[f] = str(input[f]);
+      if (v[f].length > LIMITS.company) e[f] = 'Up to ' + LIMITS.company + ' characters';
+    });
+    v.body = str(input.body);
+    if (v.body.length > LIMITS.details) e.body = 'Up to ' + LIMITS.details + ' characters';
+    v.link = str(input.link);
+    if (v.link && !isHttps(v.link)) e.link = 'Use an https:// link';
+    v.contact = str(input.contact);
+    if (v.contact.length > LIMITS.contact) e.contact = 'Up to ' + LIMITS.contact + ' characters';
+    v.audience = str(input.audience) || 'all';
+    if (!isAudience(v.audience)) e.audience = 'Pick who it is for';
+    return { ok: Object.keys(e).length === 0, value: v, errors: e };
+  }
+
+  function canPostKind(kind, tier) {
+    return LEADER_POST_KINDS.indexOf(kind) === -1 || tier === 'leader';
+  }
+
+  function postIsLive(post, today) {
+    return post.status === 'open' && (!str(post.expires_on) || post.expires_on >= today);
+  }
+
+  function profileIsStale(reviewedOn, today) {
+    return !str(reviewedOn) || addDays(str(reviewedOn).slice(0, 10), STALE_DAYS) < today;
+  }
+
+  /* ---------- sharing ---------- */
+
+  function eventEnd(ev) {
+    if (str(ev.end_time)) return { date: ev.end_time <= ev.time ? addDays(ev.date, 1) : ev.date, time: ev.end_time };
+    var h = Number(ev.time.slice(0, 2)) + 2;
+    return { date: h >= 24 ? addDays(ev.date, 1) : ev.date, time: ('0' + (h % 24)).slice(-2) + ev.time.slice(2) };
+  }
+
+  function stamp(date, time) {
+    return date.replace(/-/g, '') + 'T' + time.replace(':', '') + '00';
+  }
+
+  function icsText(s) {
+    return str(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  }
+
+  function toIcs(ev, url) {
+    var end = eventEnd(ev);
+    return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//The Masters Club//EN', 'BEGIN:VEVENT',
+      'UID:' + ev.id + '@masters-club',
+      'DTSTAMP:' + stamp(ev.date, ev.time) + 'Z',
+      'DTSTART;TZID=' + TIME_ZONE + ':' + stamp(ev.date, ev.time),
+      'DTEND;TZID=' + TIME_ZONE + ':' + stamp(end.date, end.time),
+      'SUMMARY:' + icsText(ev.title),
+      'LOCATION:' + icsText(ev.place),
+      'DESCRIPTION:' + icsText([ev.details, url].filter(Boolean).join('\n')),
+      'END:VEVENT', 'END:VCALENDAR'].join('\r\n') + '\r\n';
+  }
+
+  function googleCalendarUrl(ev, url) {
+    var end = eventEnd(ev);
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + encodeURIComponent(ev.title) +
+      '&dates=' + encodeURIComponent(stamp(ev.date, ev.time) + '/' + stamp(end.date, end.time)) +
+      '&ctz=' + encodeURIComponent(TIME_ZONE) +
+      '&location=' + encodeURIComponent(str(ev.place)) +
+      '&details=' + encodeURIComponent([ev.details, url].filter(Boolean).join('\n'));
+  }
+
+  function whatsappUrl(text) {
+    return 'https://wa.me/?text=' + encodeURIComponent(text);
+  }
+
+  function shortDate(iso) {
+    var d = new Date(iso + 'T00:00:00Z');
+    return weekday(iso).slice(0, 3) + ' ' + d.getUTCDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()];
+  }
+
+  // The week's update for a leader to paste into WhatsApp. Only what everyone may see.
+  function buildDigest(o) {
+    var soon = addDays(o.today, 30);
+    var weekAgo = addDays(o.today, -7);
+    var events = (o.events || []).filter(function (e) { return e.status !== 'cancelled' && e.audience === 'all' && e.date >= o.today && e.date <= soon; })
+      .sort(function (a, b) { return a.date.localeCompare(b.date); });
+    var posts = (o.posts || []).filter(function (p) { return p.status === 'open' && p.audience === 'all' && String(p.created_at).slice(0, 10) >= weekAgo; });
+    var joined = o.joined || [];
+    if (!events.length && !posts.length && !joined.length) return '';
+    var lines = ['*This week in The Masters Club*'];
+    if (events.length) lines.push('', '*Coming up*');
+    events.forEach(function (e) { lines.push(shortDate(e.date) + ', ' + e.time + ': ' + e.title + (e.place ? ' at ' + e.place : '')); });
+    if (posts.length) lines.push('', '*New on the board*');
+    posts.forEach(function (p) { lines.push((POST_KINDS[p.kind] || p.kind) + ': ' + p.title); });
+    if (joined.length) lines.push('', '*Just joined the directory*', joined.join(', '));
+    lines.push('', o.siteUrl);
+    return lines.join('\n');
+  }
+
   /* ---------- bulk add ---------- */
+
+  function splitPosition(text) {
+    var s = str(text);
+    if (/^[-–—]*$/.test(s)) return { role: '', company: '' };
+    // The application form asks for "Company - Role".
+    var dash = /^(.+?)\s+[-–—]\s+(.+)$/.exec(s);
+    if (dash) return { role: dash[2].trim(), company: dash[1].trim() };
+    var m = /^(.+?)(?:\s+at\s+|\s*@\s*|,\s*)(.+)$/i.exec(s);
+    return m ? { role: m[1].trim(), company: m[2].trim() } : { role: s, company: '' };
+  }
+
+  function isPeopleTable(text) {
+    return str(text).split(/\r?\n/)[0].indexOf('\t') !== -1;
+  }
+
+  // Reads a block pasted from a sheet. Only these columns are ever looked at, so a form export
+  // with ID numbers, birthdays, allergies or phones can be pasted whole and those stay out.
+  var PEOPLE_COLUMNS = [
+    ['name', /^(full name|name)$/], ['email', /^(e-?mail|mail|google email)$/], ['position', /^(current position|position)$/],
+    ['role', /^role$/], ['company', /^(company|employer)$/], ['city', /^city$/], ['program', /^program/],
+    ['linkedin', /^linkedin/], ['interests', /^interests/], ['tier', /^tier$/], ['cohort', /^cohort/]
+  ];
+
+  function parsePeopleTable(text) {
+    var lines = str(text).split(/\r?\n/);
+    var cols = {};
+    lines[0].split('\t').forEach(function (h, i) {
+      var label = str(h).toLowerCase();
+      PEOPLE_COLUMNS.forEach(function (c) { if (c[1].test(label) && cols[c[0]] === undefined) cols[c[0]] = i; });
+    });
+    if (cols.name === undefined) return { rows: [], skipped: [], error: 'The first line needs a "Name" column' };
+    var rows = [];
+    var skipped = [];
+    lines.slice(1).forEach(function (line, n) {
+      if (!str(line)) return;
+      var cells = line.split('\t');
+      var cell = function (k) { return cols[k] === undefined ? '' : str(cells[cols[k]]); };
+      var email = normalizeEmail(cell('email'));
+      if (!isEmail(email)) email = '';
+      var name = validateName(cell('name'));
+      if (!name.ok) { skipped.push({ line: email || 'Row ' + (n + 2), reason: 'Needs a name' }); return; }
+      var pos = splitPosition(cell('position'));
+      var linkedin = cell('linkedin');
+      var tier = cell('tier').toLowerCase();
+      rows.push({
+        name: name.value, email: email,
+        role: (cell('role') || pos.role).slice(0, LIMITS.role), company: (cell('company') || pos.company).slice(0, LIMITS.company),
+        city: cell('city').slice(0, LIMITS.city), program: cell('program').slice(0, LIMITS.program),
+        linkedin: isLinkedIn(linkedin) ? linkedin : '', interests: splitList(cell('interests')).slice(0, LIMITS.tags).filter(function (t) { return t.length <= LIMITS.tag; }).join(', '),
+        tier: isTier(tier) ? tier : '', cohort: cell('cohort').slice(0, 20)
+      });
+    });
+    return { rows: rows, skipped: skipped };
+  }
 
   function parseMemberLines(text, existingEmails, opts) {
     opts = opts || {};
@@ -333,6 +638,10 @@ var Core = (function () {
     LIMITS: LIMITS,
     DEFAULT_RULES: DEFAULT_RULES,
     PROFILE_FIELDS: PROFILE_FIELDS,
+    EVENT_KINDS: EVENT_KINDS,
+    POST_KINDS: POST_KINDS,
+    POST_DAYS: POST_DAYS,
+    TIME_ZONE: TIME_ZONE,
     CODE_LIMITS: CODE_LIMITS,
     toBool: toBool,
     isTier: isTier,
@@ -351,6 +660,29 @@ var Core = (function () {
     cohortLabel: cohortLabel,
     searchMembers: searchMembers,
     parseMemberLines: parseMemberLines,
+    isDate: isDate,
+    isHttps: isHttps,
+    addDays: addDays,
+    weekday: weekday,
+    shortDate: shortDate,
+    isAudience: isAudience,
+    inAudience: inAudience,
+    validateEvent: validateEvent,
+    seatFor: seatFor,
+    nextOffWaitlist: nextOffWaitlist,
+    signupState: signupState,
+    makeGroups: makeGroups,
+    validatePost: validatePost,
+    canPostKind: canPostKind,
+    postIsLive: postIsLive,
+    profileIsStale: profileIsStale,
+    toIcs: toIcs,
+    googleCalendarUrl: googleCalendarUrl,
+    whatsappUrl: whatsappUrl,
+    buildDigest: buildDigest,
+    splitPosition: splitPosition,
+    isPeopleTable: isPeopleTable,
+    parsePeopleTable: parsePeopleTable,
     makeCode: makeCode,
     codeThrottle: codeThrottle,
     sanitizeCell: sanitizeCell,
