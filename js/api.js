@@ -4,6 +4,8 @@ var Api = (function () {
   var SESSION_KEY = 'mc-session-v1';
   var GUEST_KEY = 'mc-guest-v1';
   var onSignedOut = function () {};
+  var READS = { boot: 1, me: 1, directory: 1, photos: 1, publicInfo: 1, eventRoster: 1 };
+  var writes = 0;
 
   function read(store, key) { try { return window[store].getItem(key); } catch (e) { return null; } }
   function write(store, key, value) {
@@ -18,6 +20,7 @@ var Api = (function () {
 
   async function call(action, body, opts) {
     opts = opts || {};
+    if (!READS[action]) writes++;
     var payload = Object.assign({ action: action, session: opts.session !== undefined ? opts.session : read('localStorage', SESSION_KEY) }, body || {});
     var res;
     try {
@@ -30,6 +33,7 @@ var Api = (function () {
     } catch (e) {
       throw new ApiError('network', "Can't reach the server. Check your connection and try again.");
     }
+    if (!READS[action]) writes++;
     var data;
     try { data = await res.json(); } catch (e) { throw new ApiError('server', 'The server sent something unexpected. Try again in a minute.'); }
     if (!data.ok) {
@@ -50,6 +54,8 @@ var Api = (function () {
     setSession: function (s) { write('localStorage', SESSION_KEY, s); },
     guest: function () { return read('sessionStorage', GUEST_KEY); },
     setGuest: function (g) { write('sessionStorage', GUEST_KEY, g); },
-    onSignedOut: function (fn) { onSignedOut = fn; }
+    onSignedOut: function (fn) { onSignedOut = fn; },
+    // Counts changes sent, so a refresh can tell it started before one of them.
+    writes: function () { return writes; }
   };
 })();

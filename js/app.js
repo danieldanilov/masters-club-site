@@ -163,7 +163,10 @@ var App = (function () {
 
   // Fetches everything fresh and tells the open page if anything changed.
   async function refresh() {
+    var writesAtStart = Api.writes();
     var r = await Api.call('boot');
+    // A change went out after this reply was made, so it's out of date. Ask again.
+    if (Api.writes() !== writesAtStart) return refresh();
     if (r.session) Api.setSession(r.session);
     var before = JSON.stringify(state.data);
     state.me = r.me;
