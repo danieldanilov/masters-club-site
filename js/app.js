@@ -249,6 +249,10 @@ var App = (function () {
     return gsiReady;
   }
 
+  // Google draws its button at exactly the width it's given, so it gets the room the card has,
+  // up to 280px and never under Google's 200px minimum.
+  function gsiWidth(slot) { return Math.max(200, Math.min(280, Math.floor(slot.clientWidth) || 280)); }
+
   // Every place you can sign in: Google's button, then a code by email.
   function signInBlock() {
     return '<div class="signin"><div class="gsi-slot"></div><div class="or"><span>or</span></div><div class="code-slot"></div></div>';
@@ -261,7 +265,8 @@ var App = (function () {
     if (!slots.length) return;
     if (CONFIG.DEV_SIGNIN) {
       slots.forEach(function (slot) {
-        slot.innerHTML = '<form class="dev-signin" data-dev-signin><input type="email" name="email" placeholder="Test email" required aria-label="Test email">' +
+        // The stand-in keeps the fixed width Google's button would get.
+        slot.innerHTML = '<form class="dev-signin" data-dev-signin style="width:' + gsiWidth(slot) + 'px"><input type="email" name="email" placeholder="Test email" required aria-label="Test email">' +
           '<button class="btn navy" type="submit">Sign in (dev)</button></form>';
         $('form', slot).addEventListener('submit', function (e) {
           e.preventDefault();
@@ -276,8 +281,9 @@ var App = (function () {
     }
     loadGoogle().then(function () {
       slots.forEach(function (slot) {
+        var width = gsiWidth(slot);
         slot.innerHTML = '';
-        google.accounts.id.renderButton(slot, { theme: slot.dataset.theme || 'outline', size: 'large', shape: 'rectangular', text: 'signin_with', width: 280, locale: 'en' });
+        google.accounts.id.renderButton(slot, { theme: slot.dataset.theme || 'outline', size: 'large', shape: 'rectangular', text: 'signin_with', width: width, locale: 'en' });
       });
     }).catch(function (e) {
       slots.forEach(function (slot) { slot.innerHTML = '<div class="note warn">' + esc(e.message) + '. Turn off blockers for this site and reload.</div>'; });
