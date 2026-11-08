@@ -6,13 +6,15 @@
 
   function pageHome() {
     var c = CONTENT;
-    var live = info().next_event;
-    var m = live ? { day: String(Number(live.date.slice(8))), month: longDate(live.date).split(' ')[1], title: live.title,
-      note: Core.weekday(live.date) + ' at ' + live.time + (live.place ? ', ' + live.place : '') + '. Members sign up in Events.' } : c.nextMeeting;
+    // The next public events from Admin, or content.js's next meeting until the API answers.
+    var coming = (info().upcoming_events || []).map(function (e) {
+      return { day: String(Number(e.date.slice(8))), month: longDate(e.date).split(' ')[1], title: e.title, note: Core.weekday(e.date) + ' at ' + e.time + (e.place ? ', ' + e.place : '') };
+    });
+    if (!coming.length && c.nextMeeting) coming = [c.nextMeeting];
     return '<section class="hero"><div class="tie" aria-hidden="true"></div><div class="wrap">' +
       '<h1>The Masters Club</h1>' +
       '<p class="lead">' + esc(c.tagline) + '</p>' +
-      '<div class="actions on-navy"><a class="btn gold" href="#/join">Apply for the next cohort</a><a class="link" href="#/partners">Partner with us</a></div>' +
+      '<div class="actions on-navy"><a class="btn gold" href="#/join?apply">Apply for the next cohort</a><a class="link" href="#/partners">Partner with us</a></div>' +
       '</div></section>' +
       '<div class="wrap">' +
       '<section class="split"><h2>A club and a community</h2><dl>' +
@@ -20,16 +22,18 @@
       '<div><dt>The community</dt><dd>' + esc(c.community) + '</dd></div>' +
       '</dl></section></div>' +
       '<section class="statement"><div class="wrap"><p>' + esc(c.giveFirst) + ' <span>' + esc(c.giveFirstRest) + '</span></p></div></section>' +
-      '<div class="wrap"><section class="past"><div class="past-head"><h2>Who has been in the room</h2><a class="link" href="#/meetings">All meetings</a></div>' +
+      '<div class="wrap"><section class="past"><div class="past-head"><h2>In the past</h2><a class="link" href="#/meetings">All meetings</a></div>' +
       '<div class="rail">' + c.meetings.map(function (mt) {
         return '<a href="#/meetings?m=' + esc(mt.id) + '"><img src="' + esc(mt.poster) + '" alt="" loading="lazy" width="640" height="800">' +
           '<span class="who">' + esc(mt.speaker) + '</span><span class="when">' + esc(longDate(mt.date)) + '</span></a>';
       }).join('') + '</div></section>' +
-      '<section class="invite">' +
-      '<div class="date" aria-label="' + esc(m.day + ' ' + m.month) + '"><b>' + esc(m.day) + '</b><span>' + esc(m.month.slice(0, 3)) + '</span></div>' +
-      '<div><h2>' + esc(m.title) + '</h2><p class="muted" style="margin:0">' + esc(m.note) + '</p></div>' +
-      '<a class="btn quiet" href="#/join">How to join</a>' +
-      '</section></div>';
+      (coming.length ? '<section class="coming"><div class="past-head"><h2>In the future</h2>' +
+        (state.me ? '<a class="link" href="#/events">All events</a>' : '<a class="link" href="#/join">How to join</a>') + '</div>' +
+        coming.map(function (m) {
+          return '<div class="event-row"><div class="date" aria-label="' + esc(m.day + ' ' + m.month) + '"><b>' + esc(m.day) + '</b><span>' + esc(m.month.slice(0, 3)) + '</span></div>' +
+            '<span class="body"><h3 class="title" dir="auto">' + esc(m.title) + '</h3><span class="muted" dir="auto">' + esc(m.note) + '</span></span></div>';
+        }).join('') + '</section>' : '') +
+      '</div>';
   }
 
   function pageAbout() {
@@ -103,20 +107,21 @@
     });
   }
 
-  function pageJoin() {
+  // The one place to sign in or apply. Members-only pages show it too, with a line saying why.
+  function pageJoin(params, opts) {
     var s = info().settings || {};
-    return page('<h1>Two ways in</h1><div class="paths">' +
-      '<div><h2>Apply to a cohort</h2><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
+    var me = state.me;
+    var gated = opts && opts.gated;
+    return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
+      '<h1>Two ways in</h1><div class="paths' + (params && params.has('apply') ? ' apply-first' : '') + '">' +
+      '<div class="path-apply"><h2>Apply to a cohort</h2><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
       (s.applications_note ? '<p class="on-navy-note">' + esc(s.applications_note) + '</p>' : '') +
       (s.applications_open === false ? '<p class="on-navy-note">Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.</p>'
         : '<a class="btn gold" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener">Application form</a>') + '</div>' +
-      '<div><h2>Been through a cohort?</h2><p class="muted">You\'re in the community for life. Sign in with Google or with a code sent to your email. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' +
-      signInBlock() + '</div></div>');
-  }
-
-  function pageNeedLogin() {
-    return page('<div class="panel"><div class="inner"><h1>Members only</h1>' +
-      '<p class="muted" style="margin:0">Sign in with Google, or get a code by email. No password, and you stay signed in.</p>' + signInBlock() + '</div></div>');
+      '<div class="path-signin"><h2>Already a member?</h2>' +
+      (me ? '<p class="muted">You\'re signed in as ' + esc(me.name) + '.</p><a class="btn navy" href="#/members">Go to the directory</a>'
+        : '<p class="muted">Current cohort or alumni, sign in with Google or with a code sent to your email. No password, and you stay signed in. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' + signInBlock()) +
+      '</div></div>');
   }
 
   function pageDenied(email) {
@@ -128,7 +133,7 @@
 
   function pageRequest() {
     var g = state.guest;
-    if (!g || !Api.guest()) return pageNeedLogin();
+    if (!g || !Api.guest()) return pageJoin(new URLSearchParams(), { gated: true });
     if (g.request && g.request.status === 'pending') {
       return page('<div class="panel"><div class="inner"><h1>You\'re on the waiting list</h1>' +
         '<p class="muted">We got your request for <b>' + esc(g.email) + '</b>. A leader will link it to your name, and then you can sign in. Nothing else to do.</p>' +
@@ -175,7 +180,6 @@
   App.route('#/meetings', { page: pageMeetings, wire: wireMeetings, isPublic: true });
   App.route('#/partners', { page: pagePartners, wire: wirePartners, isPublic: true });
   App.route('#/join', { page: pageJoin, isPublic: true });
-  App.route('#/signin', { page: pageNeedLogin });
   App.route('#/request', { page: pageRequest, wire: wireRequest });
   App.route('#/denied', { page: function (params) { return pageDenied(params.get('e')); } });
 })();

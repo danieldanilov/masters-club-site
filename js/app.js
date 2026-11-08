@@ -169,13 +169,18 @@ var App = (function () {
     if (Api.writes() !== writesAtStart) return refresh();
     if (r.session) Api.setSession(r.session);
     var before = JSON.stringify(state.data);
-    state.me = r.me;
-    state.data = { directory: r.directory, events: r.events, posts: r.posts, pending: r.pending || 0, today: r.today };
-    saveData();
+    take(r);
     var fetched = await fetchPhotos();
     renderNav(routeOf().route);
     if (drawFailed) render();
     else if (before !== JSON.stringify(state.data) || fetched) notifyPage();
+  }
+
+  // Keeps what a boot or a sign-in sent.
+  function take(r) {
+    state.me = r.me;
+    state.data = { directory: r.directory, events: r.events, posts: r.posts, pending: r.pending || 0, today: r.today };
+    saveData();
   }
 
   function notifyPage() {
@@ -305,9 +310,9 @@ var App = (function () {
       clearSaved();
       Api.setSession(r.session);
       Api.setGuest(null);
-      state.me = r.me;
-      $('#app').innerHTML = loading('Opening the club');
-      try { await refresh(); } catch (e) { /* the page below shows its own error */ }
+      take(r);
+      // Photos follow on their own, so the page isn't held up waiting for them.
+      fetchPhotos().then(function (got) { if (got) notifyPage(); });
       toast('Welcome, ' + r.me.name.split(' ')[0]);
       var intended = readJson('sessionStorage', INTENDED_KEY);
       writeJson('sessionStorage', INTENDED_KEY, null);
@@ -417,7 +422,7 @@ var App = (function () {
   /* ---------- nav ---------- */
 
   function renderNav(route) {
-    var links = [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners'], ['#/join', 'Join']];
+    var links = [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners']];
     if (state.me) {
       links = [['#/members', 'Directory'], ['#/events', 'Events'], ['#/board', 'Board'], ['#/me', 'My profile']];
       if (state.me.tier === 'leader') links.push(['#/admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
@@ -425,7 +430,7 @@ var App = (function () {
     // Signed in, the public pages step back to the footer.
     $('#footLinks').innerHTML = state.me ? [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners'], ['#/join', 'Join']].map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('') : '';
     var html = links.map(function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; }).join('');
-    html += state.me ? '<a href="#/" data-signout>Sign out</a>' : '<a href="#/members" class="btn gold small">Members sign in</a>';
+    html += state.me ? '<a href="#/" data-signout>Sign out</a>' : '<a href="#/join" class="btn gold small">Sign up / Log in</a>';
     $('#nav').innerHTML = html;
     var so = $('[data-signout]');
     if (so) so.addEventListener('click', function (e) { e.preventDefault(); signOut(); });
@@ -479,7 +484,7 @@ var App = (function () {
     if (r.member && !state.me) {
       // A link from WhatsApp opens the right page after sign-in. The plain directory is the default anyway.
       if (location.hash !== '#/members') writeJson('sessionStorage', INTENDED_KEY, location.hash);
-      app.innerHTML = Api.guest() && state.guest ? routes['#/request'].page(at.params) : routes['#/signin'].page(at.params);
+      app.innerHTML = Api.guest() && state.guest ? routes['#/request'].page(at.params) : routes['#/join'].page(new URLSearchParams(), { gated: true });
       if (routes['#/request'].wire) routes['#/request'].wire(at.params);
     } else if (r.member && !state.data) {
       app.innerHTML = loading('Opening the club');

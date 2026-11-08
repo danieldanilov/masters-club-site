@@ -194,12 +194,8 @@ input[type=checkbox] { width: 18px; height: 18px; margin: 0; cursor: pointer; }
 .statement p { font-family: var(--display); font-size: clamp(1.75rem, 1rem + 2.6vw, 3.25rem); line-height: 1.12; letter-spacing: -0.02em; max-width: 22ch; margin: 0; }
 .statement p span { color: var(--muted); }
 
-.invite { display: grid; grid-template-columns: auto 1fr auto; gap: 24px 40px; align-items: center; padding: 72px 0 0; }
-.invite .date { font-family: var(--display); line-height: 0.9; text-align: center; min-width: 120px; padding: 18px 20px 16px; background: var(--navy); color: var(--white); border-radius: var(--radius); }
-.invite .date b { display: block; font-size: 4rem; font-weight: 500; letter-spacing: -0.03em; }
-.invite .date span { display: block; font-size: 1.15rem; color: var(--gold); margin-top: 6px; }
-.invite h2 { margin-bottom: 8px; }
-@media (max-width: 640px) { .invite { grid-template-columns: auto 1fr; } .invite .btn { grid-column: 1 / -1; justify-self: start; } .invite .date { min-width: 92px; } .invite .date b { font-size: 3rem; } }
+.coming { padding-top: 72px; }
+.coming .event-row:last-child { border-bottom: 0; }
 
 /* Past meetings on the home page: the speaker posters in a row, scrolling sideways on a phone. */
 .past { padding-top: 96px; }
@@ -264,7 +260,13 @@ input[type=checkbox] { width: 18px; height: 18px; margin: 0; cursor: pointer; }
 .paths > div:first-child .muted { color: var(--on-navy); }
 .paths > div:last-child { background: var(--mist); }
 .paths h2 { font-size: 1.9rem; margin-bottom: 12px; }
-@media (max-width: 820px) { .paths { grid-template-columns: 1fr; } }
+@media (max-width: 820px) {
+  .paths { grid-template-columns: 1fr; }
+  /* Members sign in far more often than people apply, so on a phone that comes first. */
+  .paths .path-signin { order: -1; }
+  .paths.apply-first .path-signin { order: 0; }
+}
+.gate { margin: 0 0 20px; }
 
 /* The sign-in panel wears the tie as a band. */
 .panel { max-width: 560px; background: var(--mist); border-radius: var(--radius); overflow: hidden; }
@@ -316,7 +318,7 @@ input.search { min-height: 56px; padding-left: 48px; font-size: 1.08rem; }
 /* ---------- events ---------- */
 
 .event-row { display: flex; gap: 20px; align-items: flex-start; padding: 20px 0; border-bottom: 1px solid var(--mist-2); color: inherit; text-decoration: none; }
-.event-row:hover .title { text-decoration: underline; text-decoration-color: var(--gold); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+a.event-row:hover .title { text-decoration: underline; text-decoration-color: var(--gold); text-decoration-thickness: 2px; text-underline-offset: 5px; }
 .event-row .body { display: grid; gap: 4px; min-width: 0; }
 .event-row .title { margin: 0; font-size: 1.28rem; font-weight: 500; line-height: 1.25; }
 .event-row .date { flex: none; width: 64px; height: 64px; display: grid; place-content: center; text-align: center; background: var(--navy); color: var(--white); border-radius: var(--radius); }
