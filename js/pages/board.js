@@ -21,12 +21,12 @@
     return '<article class="post" data-post="' + esc(p.id) + '" id="p-' + esc(p.id) + '"><div class="tags"><span class="tag">' + esc(Core.POST_KINDS[p.kind] || p.kind) + '</span>' +
       (p.status !== 'open' ? '<span class="tag unjoined">Closed</span>' : p.expired ? '<span class="tag unjoined">Expired</span>' : '') + '</div>' +
       '<h2 class="title" dir="auto">' + esc(p.title) + '</h2>' +
-      (p.company || p.location ? '<p class="muted" dir="auto">' + esc([p.company, p.location].filter(Boolean).join(', ')) + '</p>' : '') +
-      (p.body ? '<p class="details" dir="auto">' + esc(p.body) + '</p>' : '') +
-      (p.contact ? '<p dir="auto"><b>Contact:</b> ' + esc(p.contact) + '</p>' : '') +
+      (p.company || p.location ? '<p class="muted ph-sensitive" dir="auto">' + esc([p.company, p.location].filter(Boolean).join(', ')) + '</p>' : '') +
+      (p.body ? '<p class="details ph-sensitive" dir="auto">' + esc(p.body) + '</p>' : '') +
+      (p.contact ? '<p dir="auto"><b>Contact:</b> <span class="ph-sensitive">' + esc(p.contact) + '</span></p>' : '') +
       '<p class="muted small">Posted by <a class="person-link" href="#/members?m=' + esc(p.author.id) + '" dir="auto">' + esc(p.author.name) + '</a> on ' + esc(Core.shortDate(String(p.created_at).slice(0, 10))) + '</p>' +
       '<div class="row-actions">' + (p.link ? '<a class="btn quiet small" href="' + esc(p.link) + '" target="_blank" rel="noopener">Open the link</a>' : '') +
-      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener">Share on WhatsApp</a>' +
+      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a>' +
       (p.can_edit ? '<a class="link" href="#/post-edit?p=' + esc(p.id) + '">Edit</a><button class="link" data-close-post>' + (closed ? 'Bring it back' : 'Close it') + '</button>' : '') + '</div></article>';
   }
 
@@ -47,13 +47,18 @@
     $('#boardCount').textContent = list.length + (list.length === 1 ? ' post' : ' posts');
     $('#boardList').innerHTML = list.length ? list.map(postHtml).join('') : '<div class="empty">' + (posts.length ? 'Nothing matches. Try fewer words.' : 'Nothing here yet. Hiring, or looking for something? Post it, and share it to WhatsApp from here.') + '</div>';
     $$('[data-kind]').forEach(function (b) { b.addEventListener('click', function () { s.kind = b.dataset.kind; drawBoard(); }); });
+    $$('[data-share]').forEach(function (a) {
+      a.addEventListener('click', function () { Analytics.track('post shared', { post_id: a.closest('[data-post]').dataset.post }); });
+    });
     $$('[data-close-post]').forEach(function (b) {
       b.addEventListener('click', async function () {
         var id = b.closest('[data-post]').dataset.post;
         var p = state.data.posts.filter(function (x) { return x.id === id; })[0];
         setBusy(b, true, 'One moment…');
         try {
-          var r = await Api.call('postClose', { id: id, reopen: p.status !== 'open' || p.expired });
+          var reopen = p.status !== 'open' || p.expired;
+          var r = await Api.call('postClose', { id: id, reopen: reopen });
+          Analytics.track(reopen ? 'post reopened' : 'post closed', { post_id: id, kind: p.kind });
           App.replaceItem('posts', r.post);
           drawBoard();
         } catch (err) { setBusy(b, false); toast(err.message); }
@@ -62,7 +67,15 @@
   }
 
   function wireBoard(params) {
-    $('#boardQ').addEventListener('input', function (e) { state.board.q = e.target.value; drawBoard(); });
+    // Once someone stops typing: how many posts they found, never the words.
+    $('#boardQ').addEventListener('input', function (e) {
+      state.board.q = e.target.value;
+      drawBoard();
+      clearTimeout(wireBoard.timer);
+      wireBoard.timer = setTimeout(function () {
+        if (state.board.q.trim()) Analytics.track('board searched', { result_count: $$('[data-post]').length, kind: state.board.kind || 'all' });
+      }, 800);
+    });
     drawBoard();
     var target = params.get('p') && document.getElementById('p-' + params.get('p'));
     if (target) { target.scrollIntoView(); target.classList.add('hit'); return 'keep-scroll'; }
@@ -106,6 +119,7 @@
       setBusy(btn, true, 'Posting…');
       try {
         var r = await Api.call('postSave', { post: input });
+        Analytics.track(input.id ? 'post updated' : 'post created', { post_id: r.post.id, kind: r.post.kind, audience: r.post.audience });
         App.replaceItem('posts', r.post);
         state.board.q = '';
         state.board.kind = '';

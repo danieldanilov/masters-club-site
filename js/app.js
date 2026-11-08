@@ -45,9 +45,10 @@ var App = (function () {
     var saved = photoCache()[person.id];
     return saved && saved.v === photo ? saved.data : '';
   }
+  // A member's photo is kept out of session replay (ph-no-capture). Leaders' public photos aren't members' rows.
   function avatar(person, cls) {
     var src = photoSrc(person);
-    if (src) return '<img class="avatar ' + (cls || '') + '" src="' + esc(src) + '" alt="" referrerpolicy="no-referrer">';
+    if (src) return '<img class="avatar ' + (cls || '') + (person.id ? ' ph-no-capture' : '') + '" src="' + esc(src) + '" alt="" referrerpolicy="no-referrer">';
     return '<div class="avatar ' + (cls || '') + '" aria-hidden="true">' + esc(initials(person.name)) + '</div>';
   }
   function tags(m) {
@@ -181,6 +182,7 @@ var App = (function () {
     state.me = r.me;
     state.data = { directory: r.directory, events: r.events, posts: r.posts, pending: r.pending || 0, today: r.today };
     saveData();
+    Analytics.identify(state.me);
   }
 
   function notifyPage() {
@@ -301,8 +303,9 @@ var App = (function () {
   async function handleCredential(credential) {
     $('#app').innerHTML = loading('Signing you in');
     try {
-      await signedIn(await Api.call('signIn', { credential: credential }, { session: '' }));
+      await signedIn(await Api.call('signIn', { credential: credential }, { session: '' }), 'google');
     } catch (e) {
+      Analytics.track('sign in failed', { method: 'google', reason: e.code });
       $('#app').innerHTML = errorBlock(e);
       wireRetry();
     }
@@ -310,13 +313,14 @@ var App = (function () {
 
   // Where a sign-in lands: the link they came for, a first look at their profile, or the
   // directory. Inactive and unknown people go to their own pages.
-  async function signedIn(r) {
+  async function signedIn(r, method) {
     setPendingCode(null);
     if (r.status === 'member') {
       clearSaved();
       Api.setSession(r.session);
       Api.setGuest(null);
       take(r);
+      Analytics.track('signed in', { method: method, first_time: !!r.me.first });
       // Photos follow on their own, so the page isn't held up waiting for them.
       fetchPhotos().then(function (got) { if (got) notifyPage(); });
       toast('Welcome, ' + r.me.name.split(' ')[0]);
@@ -324,8 +328,10 @@ var App = (function () {
       writeJson('sessionStorage', INTENDED_KEY, null);
       go(intended || (r.me.first ? '#/me' : '#/members'));
     } else if (r.status === 'inactive') {
+      Analytics.track('sign in failed', { method: method, reason: 'inactive' });
       go('#/denied?e=' + encodeURIComponent(r.email));
     } else {
+      Analytics.track('sign in failed', { method: method, reason: 'not_on_list' });
       Api.setGuest(r.guest);
       state.guest = { email: r.email, name: r.name, request: r.request };
       go('#/request');
@@ -364,10 +370,12 @@ var App = (function () {
       setBusy(btn, true, 'Sending…');
       try {
         await Api.call('emailStart', { email: email }, { session: '' });
+        Analytics.track('sign in code sent', { resend: false });
         setPendingCode(email);
         codeStep(slot, email);
         $('input[name=code]', slot).focus();
       } catch (err) {
+        Analytics.track('sign in failed', { method: 'email', reason: err.code });
         setBusy(btn, false);
         showErrors(f, err);
       }
@@ -376,7 +384,7 @@ var App = (function () {
 
   function codeStep(slot, email) {
     slot.innerHTML = '<form class="code-form" novalidate>' +
-      '<p class="small" style="margin:0">We sent a code to <b>' + esc(email) + '</b>. It works for 10 minutes. If it isn\'t there, check spam.</p>' +
+      '<p class="small" style="margin:0">We sent a code to <b class="ph-sensitive">' + esc(email) + '</b>. It works for 10 minutes. If it isn\'t there, check spam.</p>' +
       '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
       '<button class="btn gold" type="submit">Sign in</button>' +
       '<div class="code-links"><button class="link" type="button" data-resend>Send a new code</button><button class="link" type="button" data-change>Use another email</button></div></form>';
@@ -387,8 +395,9 @@ var App = (function () {
       clearErrors(f);
       setBusy(btn, true, 'Checking…');
       try {
-        await signedIn(await Api.call('emailVerify', { email: email, code: new FormData(f).get('code') }, { session: '' }));
+        await signedIn(await Api.call('emailVerify', { email: email, code: new FormData(f).get('code') }, { session: '' }), 'email');
       } catch (err) {
+        Analytics.track('sign in failed', { method: 'email', reason: err.code });
         setBusy(btn, false);
         showErrors(f, err);
       }
@@ -397,6 +406,7 @@ var App = (function () {
       clearErrors(f);
       try {
         await Api.call('emailStart', { email: email }, { session: '' });
+        Analytics.track('sign in code sent', { resend: true });
         setPendingCode(email);
         toast('New code sent');
       } catch (err) {
@@ -410,6 +420,9 @@ var App = (function () {
   }
 
   function signOut() {
+    // Sent while still named, then this browser goes back to anonymous for whoever's next.
+    Analytics.track('signed out');
+    Analytics.reset();
     Api.setSession(null);
     Api.setGuest(null);
     clearSaved();
@@ -421,6 +434,7 @@ var App = (function () {
   }
 
   Api.onSignedOut(function () {
+    Analytics.reset();
     clearSaved();
     toast('Your session ended. Please sign in again.');
   });
@@ -490,8 +504,10 @@ var App = (function () {
     if (r.member && !state.me) {
       // A link from WhatsApp opens the right page after sign-in. The plain directory is the default anyway.
       if (location.hash !== '#/members') writeJson('sessionStorage', INTENDED_KEY, location.hash);
-      app.innerHTML = Api.guest() && state.guest ? routes['#/request'].page(at.params) : routes['#/join'].page(new URLSearchParams(), { gated: true });
-      if (routes['#/request'].wire) routes['#/request'].wire(at.params);
+      var asking = Api.guest() && state.guest;
+      app.innerHTML = asking ? routes['#/request'].page(at.params) : routes['#/join'].page(new URLSearchParams(), { gated: true });
+      var shown = routes[asking ? '#/request' : '#/join'];
+      if (shown.wire) shown.wire(at.params);
     } else if (r.member && !state.data) {
       app.innerHTML = loading('Opening the club');
       refresh().then(render, function (e) {
@@ -507,6 +523,7 @@ var App = (function () {
       } catch (e) {
         // A page never stays stuck: say so, and the fresh data gets a chance to fix it.
         console.error(e);
+        Analytics.error(e, { where: 'page draw', route: at.route });
         drawFailed = true;
         app.innerHTML = errorBlock({ message: "This page couldn't open. Try again in a moment." });
         wireRetry();
@@ -536,6 +553,7 @@ var App = (function () {
       return render();
     }
     loadSaved();
+    Analytics.identify(state.me);
     if (state.data) {
       // The saved copy shows now; the fresh one replaces it when it arrives.
       render();

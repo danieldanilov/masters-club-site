@@ -10,7 +10,7 @@
     return page('<div class="page-head"><h1>' + (!first ? 'Edit your profile' : u.hasProfile ? 'Welcome. Check your profile' : 'Welcome. Fill in your profile') + '</h1></div>' +
       (first ? '<p class="lead measure" style="margin-top:-8px">' + (u.hasProfile ? 'We filled this in from your application. Fix anything that\'s off, and save.' : 'This is how other members find you. It takes a minute, and you can change it any time.') + ' <a class="link" href="#/members">Skip for now</a></p>' : '') +
       '<div class="two" style="margin-top:28px"><form class="form-grid" id="profileForm" novalidate>' +
-      '<div class="photo-row"><span id="myPhoto">' + App.avatar(u, 'lg') + '</span><div class="row-actions"><label class="btn quiet small file-btn">' + (p.photo ? 'Change photo' : 'Add a photo') + '<input type="file" accept="image/*" aria-label="Choose a photo"></label>' +
+      '<div class="photo-row"><span id="myPhoto">' + App.avatar(u, 'lg') + '</span><div class="row-actions"><label class="btn quiet small file-btn">' + (p.photo ? 'Change photo' : 'Add a photo') + '<input type="file" accept="image/*" aria-label="Choose a photo" class="ph-no-capture"></label>' +
       (p.photo ? '<button class="link" type="button" id="removePhoto">Remove photo</button>' : '') + '<span class="muted small">Google sign-in brings your Google photo.</span></div></div>' +
       '<label>Name<input type="text" name="name" value="' + esc(u.name) + '" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +
       '<label>Role<input type="text" name="role" value="' + esc(p.role) + '" maxlength="60" dir="auto" placeholder="Product Manager"><span class="field-error" data-err="role"></span></label>' +
@@ -27,7 +27,7 @@
       '<label>LinkedIn URL<input type="url" name="linkedin" value="' + esc(p.linkedin) + '" placeholder="https://www.linkedin.com/in/..."><span class="field-error" data-err="linkedin"></span></label>' +
       '<label>WhatsApp number <span class="hint">Optional, with the country code</span><input type="tel" name="phone" value="' + esc(p.phone) + '" placeholder="+972..."><span class="field-error" data-err="phone"></span></label>' +
       '<label class="check-line"><input type="checkbox" name="show_phone" ' + (p.show_phone ? 'checked' : '') + '> Show a WhatsApp button on my profile</label>' +
-      '<label class="check-line"><input type="checkbox" name="show_email" ' + (p.show_email ? 'checked' : '') + '> Show my email (' + esc(u.email) + ') on my profile</label>' +
+      '<label class="check-line"><input type="checkbox" name="show_email" ' + (p.show_email ? 'checked' : '') + '> Show my email <span class="ph-sensitive">(' + esc(u.email) + ')</span> on my profile</label>' +
       '<label class="check-line"><input type="checkbox" name="hidden" ' + (p.hidden ? 'checked' : '') + '> Hide me from the directory</label>' +
       '<div class="row-actions"><button class="btn gold" type="submit">Save profile</button></div>' +
       '</form><div class="sticky"><div class="preview-label">How others see you</div><div class="preview"><div class="sheet" id="preview"></div></div></div></div>');
@@ -71,6 +71,7 @@
       setBusy(btn, true);
       try {
         var res = await Api.call('saveProfile', r);
+        Analytics.track('profile updated', profileFacts(u, check.value));
         state.me = res.me;
         toast('Profile saved');
         await App.refresh();
@@ -81,6 +82,13 @@
         else render();
       }
     });
+  }
+
+  // What a save says about a profile, without a word of what's in it.
+  function profileFacts(u, v) {
+    var filled = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'interests', 'open_to', 'bio', 'linkedin', 'phone']
+      .filter(function (k) { return Array.isArray(v[k]) ? v[k].length : !!v[k]; }).length;
+    return { first_time: !!u.first, fields_filled: filled, has_photo: !!u.profile.photo, show_phone: !!v.show_phone, show_email: !!v.show_email, hidden: !!v.hidden };
   }
 
   // Crops to a square and shrinks to a small JPEG in the browser, so the file's original size,
@@ -112,6 +120,7 @@
       try {
         var data = await shrink(input.files[0]);
         var r = await Api.call('savePhoto', { data: data });
+        Analytics.track('photo uploaded');
         state.me = r.me;
         App.photoCache()[r.me.id] = { v: r.me.profile.photo, data: data };
         App.writeJson('localStorage', App.PHOTOS_KEY, App.photoCache());
@@ -124,6 +133,7 @@
     if (remove) remove.addEventListener('click', async function () {
       try {
         var r = await Api.call('removePhoto');
+        Analytics.track('photo removed');
         state.me = r.me;
         toast('Photo removed');
         App.render();

@@ -99,6 +99,7 @@
       var fd = new FormData(f);
       try {
         await Api.call('partnerInquiry', { name: fd.get('name'), company: fd.get('company'), email: fd.get('email'), message: fd.get('message'), website: fd.get('website') }, { session: '' });
+        Analytics.track('partner inquiry sent');
         $('.partner-form').innerHTML = '<h2>Thank you</h2><p class="muted">We got your message and will write back soon.</p>';
       } catch (err) {
         setBusy(btn, false);
@@ -117,7 +118,7 @@
       '<div class="path-apply"><h2>Apply to a cohort</h2><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
       (s.applications_note ? '<p class="on-navy-note">' + esc(s.applications_note) + '</p>' : '') +
       (s.applications_open === false ? '<p class="on-navy-note">Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.</p>'
-        : '<a class="btn gold" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener">Application form</a>') + '</div>' +
+        : '<a class="btn gold" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Application form</a>') + '</div>' +
       '<div class="path-signin"><h2>Already a member?</h2>' +
       (me ? '<p class="muted">You\'re signed in as ' + esc(me.name) + '.</p><a class="btn navy" href="#/members">Go to the directory</a>'
         : '<p class="muted">Current cohort or alumni, sign in with Google or with a code sent to your email. No password, and you stay signed in. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' + signInBlock()) +
@@ -126,7 +127,7 @@
 
   function pageDenied(email) {
     return page('<div class="panel"><div class="inner"><h1>Can\'t get in?</h1>' +
-      '<p><b>' + esc(email || 'This account') + '</b> is on the list but marked inactive.</p>' +
+      '<p><b class="ph-sensitive">' + esc(email || 'This account') + '</b> is on the list but marked inactive.</p>' +
       '<p class="muted" style="margin:0">Ask one of the leaders on WhatsApp to reactivate you, or sign in with another account.</p>' +
       signInBlock() + '</div></div>');
   }
@@ -136,11 +137,11 @@
     if (!g || !Api.guest()) return pageJoin(new URLSearchParams(), { gated: true });
     if (g.request && g.request.status === 'pending') {
       return page('<div class="panel"><div class="inner"><h1>You\'re on the waiting list</h1>' +
-        '<p class="muted">We got your request for <b>' + esc(g.email) + '</b>. A leader will link it to your name, and then you can sign in. Nothing else to do.</p>' +
+        '<p class="muted">We got your request for <b class="ph-sensitive">' + esc(g.email) + '</b>. A leader will link it to your name, and then you can sign in. Nothing else to do.</p>' +
         '<button class="btn quiet" data-signout-guest>Use another account</button></div></div>');
     }
     return page('<div class="panel"><div class="inner"><h1>We don\'t have this email yet</h1>' +
-      '<p class="muted">You signed in as <b>' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name.</p>' +
+      '<p class="muted">You signed in as <b class="ph-sensitive">' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name.</p>' +
       '<form class="form-grid" id="requestForm" novalidate style="margin-top:24px">' +
       '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto" value="' + esc(g.name) + '"><span class="field-error" data-err="name"></span></label>' +
       '<label>Anything that helps us find you <span class="hint">Your cohort, or the name you use on WhatsApp</span><textarea name="note" maxlength="280" rows="2" dir="auto"></textarea><span class="field-error" data-err="note"></span></label>' +
@@ -160,6 +161,7 @@
       try {
         var fd = new FormData(f);
         var r = await Api.call('requestAccess', { name: fd.get('name'), note: fd.get('note') }, { session: Api.guest() });
+        Analytics.track('access requested');
         state.guest.request = r.request;
         toast('Request sent');
         App.render();
@@ -168,6 +170,11 @@
         showErrors(f, err);
       }
     });
+  }
+
+  function wireJoin() {
+    var apply = $('[data-apply]');
+    if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked'); });
   }
 
   function wireMeetings(params) {
@@ -179,7 +186,7 @@
   App.route('#/about', { page: pageAbout, isPublic: true });
   App.route('#/meetings', { page: pageMeetings, wire: wireMeetings, isPublic: true });
   App.route('#/partners', { page: pagePartners, wire: wirePartners, isPublic: true });
-  App.route('#/join', { page: pageJoin, isPublic: true });
+  App.route('#/join', { page: pageJoin, wire: wireJoin, isPublic: true });
   App.route('#/request', { page: pageRequest, wire: wireRequest });
   App.route('#/denied', { page: function (params) { return pageDenied(params.get('e')); } });
 })();

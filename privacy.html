@@ -20,16 +20,23 @@
 <h2>What we store</h2>
 <p>Your directory entry starts from what you gave the club when you applied: your name, email, role, company, city and program. ID numbers, birth dates, allergies and phone numbers from the application are never copied in. Everything else is what you add yourself: what you can help with, what you're looking for, interests, LinkedIn, a bio, a photo, and a WhatsApp number if you want one shown.</p>
 <p>When you sign in with Google, we receive your name, email address and profile photo from Google. We also keep the events you sign up for, whether you attended, what you post on the board, and the day you last visited, so the leaders can run the club.</p>
-<p>We don't use cookies for tracking, we don't run analytics, and we don't sell or share your data with anyone. Partners get no access to the members list.</p>
+<p>We don't sell your data or share it with anyone, and partners get no access to the members list.</p>
+
+<h2>How we see what's working</h2>
+<p>The site uses PostHog so the club's leaders can see what people actually use, like how many open the directory or sign up for an event, and fix what breaks. It records the pages you open, what you tap, how fast pages load, and errors.</p>
+<p>It also counts the things that happen on the site: signing in, signing up for an event or giving up your seat, posting on the board, saving your profile or photo, and searching the directory. It records that they happened, never what you wrote. A search counts how many people it found, not what you searched for.</p>
+<p>To see where people get stuck, it keeps a recording of how you move around the site. Everything you type is hidden in it, and so is what members wrote about themselves: emails, phone numbers, photos, bios, roles, notes and posts. Names and the public pages show as they are.</p>
+<p>If you browse without signing in, you stay anonymous. Once you sign in, what you do is linked to your name, email, cohort and whether you're in the club or the community, so we can tell members apart. PostHog keeps an ID in a cookie and in your browser's storage to recognise your visits, and signing out starts a fresh one.</p>
+<p>PostHog keeps this on its servers in the US. We don't use it for ads, and nobody outside the club's leaders sees it.</p>
 
 <h2>Who can see it</h2>
-<p>Only signed-in members see the directory, and the club's leaders decide which groups of members see each other. Your email and WhatsApp number are shown only if you tick the box for each on your profile. You can also hide yourself from the directory altogether. Other members see your name on events you've signed up for, unless you've hidden yourself. The club's leaders can see the full members list, including emails and attendance, to manage access and events.</p>
+<p>Only signed-in members see the directory, and the club's leaders decide which groups of members see each other. Your email and WhatsApp number are shown only if you tick the box for each on your profile. You can also hide yourself from the directory altogether. Other members see your name on events you've signed up for, unless you've hidden yourself. The club's leaders can see the full members list, including emails and attendance, to manage access and events, and they're the only ones who see what PostHog records.</p>
 
 <h2>Where it lives</h2>
-<p>The data is kept in a Google Sheet managed by the club's leaders, and the site reads it through Google Apps Script. Your browser keeps a sign-in token and a copy of the directory so pages open quickly; signing out removes them.</p>
+<p>The data is kept in a Google Sheet managed by the club's leaders, and the site reads it through Google Apps Script. Your browser keeps a sign-in token and a copy of the directory so pages open quickly, and signing out removes them. What PostHog records stays in the club's own PostHog project.</p>
 
 <h2>Changing or deleting your data</h2>
-<p>You can edit your profile, change your photo or hide yourself at any time on the site. To have your data removed entirely, ask one of the club's leaders on WhatsApp, and we'll delete it.</p>
+<p>You can edit your profile, change your photo or hide yourself at any time on the site. To have your data removed entirely, including everything PostHog recorded about you, ask one of the club's leaders on WhatsApp, and we'll delete it.</p>
 
 <p class="back"><a class="link" href="./">Back to the site</a></p>
 </div></main>

@@ -32,7 +32,7 @@
       cohorts.map(function (c) { return '<option value="' + esc(c) + '" ' + (s.cohort === c ? 'selected' : '') + '>' + esc(cohortLabel(c)) + '</option>'; }).join('') + '</select>' +
       '<select id="fIndustry" aria-label="Industry"><option value="">All industries</option>' + Core.INDUSTRIES.map(function (i) { return '<option ' + (s.industry === i ? 'selected' : '') + '>' + esc(i) + '</option>'; }).join('') + '</select>' +
       Core.OPEN_TO.map(function (o) { return '<button class="chip ' + (s.open.indexOf(o) !== -1 ? 'on' : '') + '" data-open="' + esc(o) + '" aria-pressed="' + (s.open.indexOf(o) !== -1) + '">' + esc(o) + '</button>'; }).join('') +
-      '</div><p class="result-note" id="resultNote" hidden></p><div class="results" id="results"></div>';
+      '</div><p class="result-note ph-sensitive" id="resultNote" hidden></p><div class="results" id="results"></div>';
 
     function markTabs() {
       $$('[data-tier]').forEach(function (b) {
@@ -55,16 +55,28 @@
         }
       }
       $('#count').textContent = list.length + ' member' + (list.length === 1 ? '' : 's');
+      shown = list.length;
       $('#results').innerHTML = list.length ? list.map(memberCard).join('') : '<div class="empty">Nobody matches. Try fewer words or filters.</div>';
       $$('#results .member-card').forEach(function (c) {
         c.addEventListener('click', function () { openProfile(c.dataset.id); });
       });
     }
-    $('#q').addEventListener('input', function (e) { s.q = e.target.value; draw(); });
-    $('#fCohort').addEventListener('change', function (e) { s.cohort = e.target.value; draw(); });
-    $('#fIndustry').addEventListener('change', function (e) { s.industry = e.target.value; draw(); });
+    // Once someone stops typing or picks a filter: how many they found and which filters were on,
+    // never the words.
+    var shown = 0;
+    function searched() {
+      clearTimeout(searched.timer);
+      searched.timer = setTimeout(function () {
+        var filters = ['cohort', 'industry', 'tier'].filter(function (k) { return s[k]; }).concat(s.open.length ? ['open_to'] : []);
+        if (!s.q.trim() && !filters.length) return;
+        Analytics.track('directory searched', { result_count: shown, has_query: !!s.q.trim(), filters: filters });
+      }, 800);
+    }
+    $('#q').addEventListener('input', function (e) { s.q = e.target.value; draw(); searched(); });
+    $('#fCohort').addEventListener('change', function (e) { s.cohort = e.target.value; draw(); searched(); });
+    $('#fIndustry').addEventListener('change', function (e) { s.industry = e.target.value; draw(); searched(); });
     $$('[data-tier]').forEach(function (b) {
-      b.addEventListener('click', function () { s.tier = b.dataset.tier; markTabs(); draw(); });
+      b.addEventListener('click', function () { s.tier = b.dataset.tier; markTabs(); draw(); searched(); });
     });
     $$('[data-open]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -73,6 +85,7 @@
         b.classList.toggle('on');
         b.setAttribute('aria-pressed', String(s.open.indexOf(o) !== -1));
         draw();
+        searched();
       });
     });
     var ok = $('#looksRight');
@@ -80,6 +93,7 @@
       $('#nudge').remove();
       try {
         var r = await Api.call('confirmProfile');
+        Analytics.track('profile confirmed');
         state.me = r.me;
         App.saveData();
       } catch (e) { toast(e.message); }
@@ -95,33 +109,40 @@
     var role = roleLine(p);
     return '<button class="member-card" data-id="' + esc(m.id) + '" type="button">' + avatar(m) + '<span class="body">' +
       '<span class="name" dir="auto">' + esc(m.name) + '</span>' +
-      '<span class="role" dir="auto" style="display:block">' + (role || 'No profile yet') + '</span>' +
-      '<span class="tags">' + tags(m) + '</span>' +
-      (p.help.length ? '<span class="help" dir="auto" style="display:block">Can help with ' + esc(p.help.join(', ')) + '</span>' : '') +
+      '<span class="role ph-sensitive" dir="auto" style="display:block">' + (role || 'No profile yet') + '</span>' +
+      '<span class="tags ph-sensitive">' + tags(m) + '</span>' +
+      (p.help.length ? '<span class="help ph-sensitive" dir="auto" style="display:block">Can help with ' + esc(p.help.join(', ')) + '</span>' : '') +
       '</span></button>';
   }
 
+  // Contact links carry the phone and email in their address, so replay leaves them out whole
+  // (ph-no-capture), and what members wrote about themselves is masked (ph-sensitive). Names show.
   function profileSheet(m, preview) {
     var p = m.profile;
-    var wa = p.phone ? '<a class="btn gold" href="https://wa.me/' + esc(String(p.phone).replace(/\D/g, '')) + '" target="_blank" rel="noopener">' + icon('chat') + 'WhatsApp</a>' : '';
-    var li = p.linkedin ? '<a class="btn quiet" href="' + esc(p.linkedin) + '" target="_blank" rel="noopener">' + icon('linkedin') + 'LinkedIn</a>' : '';
-    var mail = p.email ? '<a class="btn quiet" href="mailto:' + esc(p.email) + '">Email</a>' : '';
+    var wa = p.phone ? '<a class="btn gold" href="https://wa.me/' + esc(String(p.phone).replace(/\D/g, '')) + '" target="_blank" rel="noopener" data-channel="whatsapp">' + icon('chat') + 'WhatsApp</a>' : '';
+    var li = p.linkedin ? '<a class="btn quiet" href="' + esc(p.linkedin) + '" target="_blank" rel="noopener" data-channel="linkedin">' + icon('linkedin') + 'LinkedIn</a>' : '';
+    var mail = p.email ? '<a class="btn quiet" href="mailto:' + esc(p.email) + '" data-channel="email">Email</a>' : '';
     function list(label, arr) {
-      return arr && arr.length ? '<h3>' + label + '</h3><div class="tags">' + arr.map(function (h) { return '<span class="tag" dir="auto">' + esc(h) + '</span>'; }).join('') + '</div>' : '';
+      return arr && arr.length ? '<h3>' + label + '</h3><div class="tags ph-sensitive">' + arr.map(function (h) { return '<span class="tag" dir="auto">' + esc(h) + '</span>'; }).join('') + '</div>' : '';
     }
-    var actions = wa || li || mail ? '<div class="actions">' + wa + li + mail + '</div>' : (preview ? '' : '<p class="muted small" style="margin-top:28px">No contact links yet.</p>');
+    var actions = wa || li || mail ? '<div class="actions ph-no-capture">' + wa + li + mail + '</div>' : (preview ? '' : '<p class="muted small" style="margin-top:28px">No contact links yet.</p>');
     return avatar(m, 'lg') +
       '<h2 dir="auto">' + esc(m.name) + '</h2>' +
-      '<div class="role" dir="auto">' + (roleLine(p) || 'No role yet') + '</div>' +
-      (p.city || p.program ? '<div class="muted" dir="auto" style="margin-top:4px">' + esc([p.program, p.city].filter(Boolean).join(', ')) + '</div>' : '') +
-      '<div class="tags" style="margin-top:14px">' + tags(m) + '</div>' +
-      (p.bio ? '<p class="bio" dir="auto">' + esc(p.bio) + '</p>' : '') +
+      '<div class="role ph-sensitive" dir="auto">' + (roleLine(p) || 'No role yet') + '</div>' +
+      (p.city || p.program ? '<div class="muted ph-sensitive" dir="auto" style="margin-top:4px">' + esc([p.program, p.city].filter(Boolean).join(', ')) + '</div>' : '') +
+      '<div class="tags ph-sensitive" style="margin-top:14px">' + tags(m) + '</div>' +
+      (p.bio ? '<p class="bio ph-sensitive" dir="auto">' + esc(p.bio) + '</p>' : '') +
       list('Can help with', p.help) + list('Looking for', p.looking) + list('Open to', p.open_to) + list('Outside work', p.interests) + actions;
   }
 
   function openProfile(id) {
     var m = state.data.directory.members.filter(function (x) { return x.id === id; })[0];
-    if (m) openSheet(profileSheet(m));
+    if (!m) return;
+    openSheet(profileSheet(m));
+    Analytics.track('profile viewed');
+    $$('#modal [data-channel]').forEach(function (a) {
+      a.addEventListener('click', function () { Analytics.track('contact clicked', { channel: a.dataset.channel }); });
+    });
   }
 
   App.profileSheet = profileSheet;

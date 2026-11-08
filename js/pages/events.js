@@ -76,15 +76,15 @@
       '<div class="tags" style="margin-top:12px"><span class="tag">' + esc(Core.EVENT_KINDS[e.kind] || e.kind) + '</span><span class="tag">' + esc(audienceLabel(e.audience)) + '</span>' + (e.status === 'cancelled' ? statusLine(e) : '') + '</div>' +
       '<p class="lead" style="margin-top:16px">' + esc(when(e)) + (e.end_time ? ' to ' + esc(e.end_time) : '') + '</p>' +
       (e.place ? '<p dir="auto">' + (e.map_url ? '<a class="link" href="' + esc(e.map_url) + '" target="_blank" rel="noopener">' + esc(e.place) + '</a>' : esc(e.place)) + '</p>' : '') +
-      (e.details ? '<p class="details" dir="auto">' + esc(e.details) + '</p>' : '') +
+      (e.details ? '<p class="details ph-sensitive" dir="auto">' + esc(e.details) + '</p>' : '') +
       (e.price ? '<p>' + esc(e.price) + (e.pay_url ? ' <a class="link" href="' + esc(e.pay_url) + '" target="_blank" rel="noopener">Pay here</a>' : '') + (e.me.paid ? ' <span class="tag">Paid</span>' : '') + '</p>' : '') +
       (seatNote(e) && !e.me.status ? '<p class="muted">' + esc(seatNote(e)) + '</p>' : '') +
       (e.rsvp_closes && e.signup.open ? '<p class="muted">Sign-up closes ' + esc(Core.shortDate(e.rsvp_closes.slice(0, 10))) + ' at ' + esc(e.rsvp_closes.slice(11)) + '</p>' : '') +
       '<div class="signup">' + signup + '</div>' +
       (e.me.group ? '<p class="you">Your table: ' + esc(e.me.group) + (e.me.groupmates.length ? ', with ' + esc(e.me.groupmates.join(', ')) : '') + '</p>' : '') +
-      '<div class="actions event-actions"><a class="btn quiet small" href="' + esc(Core.googleCalendarUrl(e, link)) + '" target="_blank" rel="noopener">Google Calendar</a>' +
+      '<div class="actions event-actions"><a href="' + esc(Core.googleCalendarUrl(e, link)) + '" target="_blank" rel="noopener" class="btn quiet small ph-no-capture" data-gcal>Google Calendar</a>' +
       '<button class="btn quiet small" data-ics>Apple or Outlook</button>' +
-      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener">Share on WhatsApp</a></div>' +
+      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a></div>' +
       '<h2 class="sub">Who\'s coming</h2>' +
       (e.going_count ? '<p>' + e.attendees.map(function (a) { return '<a class="person-link" href="#/members?m=' + esc(a.id) + '" dir="auto">' + esc(a.name) + '</a>'; }).join(', ') +
         (others > 0 ? (e.attendees.length ? ' and ' : '') + others + ' more' : '') + '</p>' : '<p class="muted">Nobody yet.</p>') +
@@ -103,14 +103,21 @@
       $$('[data-rsvp]', box).forEach(function (b) {
         b.addEventListener('click', async function () {
           setBusy(b, true, 'One moment…');
+          var going = b.dataset.rsvp === 'in';
+          var was = find(e.id).me.status;
           try {
-            var r = await Api.call('rsvp', { eventId: e.id, going: b.dataset.rsvp === 'in' });
+            var r = await Api.call('rsvp', { eventId: e.id, going: going });
+            if (going) Analytics.track('rsvp', { event_id: e.id, event_kind: r.event.kind, outcome: r.event.me.status });
+            else Analytics.track('rsvp cancelled', { event_id: e.id, event_kind: r.event.kind, was: was });
             App.replaceItem('events', r.event);
             redraw();
           } catch (err) { setBusy(b, false); toast(err.message); }
         });
       });
+      $('[data-gcal]', box).addEventListener('click', function () { Analytics.track('calendar added', { event_id: e.id, calendar: 'google' }); });
+      $('[data-share]', box).addEventListener('click', function () { Analytics.track('event shared', { event_id: e.id }); });
       $('[data-ics]', box).addEventListener('click', function () {
+        Analytics.track('calendar added', { event_id: e.id, calendar: 'file' });
         App.downloadFile(e.id + '.ics', 'text/calendar;charset=utf-8', Core.toIcs(find(e.id), App.siteLink('#/event?e=' + e.id)));
       });
       var c = $('[data-cancel]', box);
@@ -119,6 +126,7 @@
         if (!restoring && !window.confirm('Cancel this event? People who signed up will see it as cancelled.')) return;
         try {
           var r = await Api.call('eventCancel', { id: e.id, restore: restoring });
+          Analytics.track(restoring ? 'event restored' : 'event cancelled', { event_id: e.id });
           App.replaceItem('events', r.event);
           redraw();
         } catch (err) { toast(err.message); }
@@ -184,6 +192,7 @@
       setBusy(btn, true);
       try {
         var r = await Api.call('eventSave', { event: input });
+        Analytics.track(input.id ? 'event updated' : 'event created', { event_id: r.event.id, kind: r.event.kind, audience: r.event.audience, public: !!r.event.public });
         App.replaceItem('events', r.event);
         state.data.events.sort(function (a, b) { return (a.date + a.time).localeCompare(b.date + b.time); });
         App.saveData();
@@ -210,7 +219,7 @@
     if (!rows.length) { box.innerHTML = '<p class="muted" style="margin-top:20px">Nobody has signed up yet.</p>'; return; }
     box.innerHTML = '<div class="roster">' + rows.map(function (r) {
       return '<div class="roster-row" data-row="' + esc(r.member_id) + '"><div class="who"><span class="name" dir="auto">' + esc(r.name) + '</span> <span class="tag ' + esc(r.tier) + '">' + esc(TIER_LABEL[r.tier] || '') + '</span>' +
-        (r.status === 'waitlist' ? ' <span class="tag">Waitlist</span>' : '') + (r.email ? '<div class="muted small">' + esc(r.email) + '</div>' : '') + (r.note ? '<div class="muted small" dir="auto">' + esc(r.note) + '</div>' : '') + '</div>' +
+        (r.status === 'waitlist' ? ' <span class="tag">Waitlist</span>' : '') + (r.email ? '<div class="muted small ph-sensitive">' + esc(r.email) + '</div>' : '') + (r.note ? '<div class="muted small ph-sensitive" dir="auto">' + esc(r.note) + '</div>' : '') + '</div>' +
         '<label>Attendance<select data-f="attended">' + [['', 'Not marked'], ['yes', 'Came'], ['no', "Didn't come"], ['excused', 'Excused']].map(function (o) { return '<option value="' + o[0] + '" ' + (r.attended === o[0] ? 'selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
         '<label>Group<input type="text" data-f="group" value="' + esc(r.group) + '" maxlength="60" dir="auto"></label>' +
         '<label class="check-line"><input type="checkbox" data-f="paid" ' + (r.paid ? 'checked' : '') + '> Paid</label></div>';
@@ -220,7 +229,11 @@
         el.addEventListener('change', async function () {
           var patch = { eventId: eventId, memberId: row.dataset.row };
           patch[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value;
-          try { await Api.call('rosterUpdate', patch); toast('Saved'); } catch (err) { toast(err.message); }
+          try {
+            await Api.call('rosterUpdate', patch);
+            Analytics.track('roster updated', { event_id: eventId, field: el.dataset.f });
+            toast('Saved');
+          } catch (err) { toast(err.message); }
         });
       });
     });
@@ -234,17 +247,26 @@
     try { load(await Api.call('eventRoster', { eventId: id })); } catch (err) { $('#roster').innerHTML = '<div class="note warn">' + esc(err.message) + '</div>'; return; }
     $('[data-groups]').addEventListener('click', async function (ev) {
       setBusy(ev.target, true, 'Making…');
-      try { load(await Api.call('rosterGroups', { eventId: id })); toast('Groups made'); } catch (err) { toast(err.message); }
+      try {
+        load(await Api.call('rosterGroups', { eventId: id }));
+        Analytics.track('groups made', { event_id: id, people: rows.filter(function (r) { return r.status === 'going'; }).length });
+        toast('Groups made');
+      } catch (err) { toast(err.message); }
       setBusy(ev.target, false);
     });
     $('[data-copy]').addEventListener('click', function () {
+      Analytics.track('names copied', { event_id: id });
       App.copyText(rows.filter(function (r) { return r.status === 'going'; }).map(function (r) { return r.name + (r.group ? ' (' + r.group + ')' : ''); }).join('\n'));
     });
     var add = $('[data-add]');
     if (add) add.addEventListener('click', async function () {
       var who = $('#addWho').value;
       if (!who) return;
-      try { load(await Api.call('rosterAdd', { eventId: id, memberId: who })); toast('Added'); } catch (err) { toast(err.message); }
+      try {
+        load(await Api.call('rosterAdd', { eventId: id, memberId: who }));
+        Analytics.track('attendee added', { event_id: id });
+        toast('Added');
+      } catch (err) { toast(err.message); }
     });
   }
 

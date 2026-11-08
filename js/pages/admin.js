@@ -33,8 +33,8 @@
 
     var requestsHtml = pending.length ? pending.map(function (r) {
       var guess = bestMatch(r.name, data.members);
-      return '<div class="request" data-request="' + esc(r.id) + '"><div><span class="who" dir="auto">' + esc(r.name) + '</span> <span class="muted">' + esc(r.email) + '</span>' +
-        (r.note ? '<div class="muted small" dir="auto">"' + esc(r.note) + '"</div>' : '') + '</div>' +
+      return '<div class="request" data-request="' + esc(r.id) + '"><div><span class="who" dir="auto">' + esc(r.name) + '</span> <span class="muted ph-sensitive">' + esc(r.email) + '</span>' +
+        (r.note ? '<div class="muted small ph-sensitive" dir="auto">"' + esc(r.note) + '"</div>' : '') + '</div>' +
         '<div class="row-actions"><select data-link aria-label="Link to"><option value="">Add as a new member</option>' +
         data.members.map(function (m) { return '<option value="' + esc(m.id) + '" ' + (guess && guess.id === m.id ? 'selected' : '') + '>Link to ' + esc(m.name) + (m.cohort ? ', ' + esc(cohortLabel(m.cohort)) : '') + '</option>'; }).join('') +
         '</select>' + tierSelect('data-new-tier aria-label="Tier for a new member"', 'community') +
@@ -42,8 +42,8 @@
     }).join('') : '<p class="muted">No requests waiting.</p>';
 
     var inquiriesHtml = inquiries.length ? inquiries.map(function (i) {
-      return '<div class="request" data-inquiry="' + esc(i.id) + '"><div><span class="who" dir="auto">' + esc(i.company) + '</span> <span class="muted" dir="auto">' + esc(i.name) + ', <a class="link" href="mailto:' + esc(i.email) + '">' + esc(i.email) + '</a></span>' +
-        '<div class="muted small" dir="auto">"' + esc(i.message) + '"</div></div><div class="row-actions"><button class="btn gold small" data-inq="done">Done</button><button class="btn quiet small" data-inq="declined">Not for us</button></div></div>';
+      return '<div class="request" data-inquiry="' + esc(i.id) + '"><div><span class="who" dir="auto">' + esc(i.company) + '</span> <span class="muted ph-sensitive" dir="auto">' + esc(i.name) + ', <a class="link ph-no-capture" href="mailto:' + esc(i.email) + '">' + esc(i.email) + '</a></span>' +
+        '<div class="muted small ph-sensitive" dir="auto">"' + esc(i.message) + '"</div></div><div class="row-actions"><button class="btn gold small" data-inq="done">Done</button><button class="btn quiet small" data-inq="declined">Not for us</button></div></div>';
     }).join('') : '<p class="muted">Nothing waiting. Messages from the Partners page land here.</p>';
 
     $('#adminBody').innerHTML =
@@ -53,8 +53,8 @@
       '<section class="admin-section"><h2>Partner messages' + (inquiries.length ? ' <span class="badge">' + inquiries.length + '</span>' : '') + '</h2>' + inquiriesHtml + '</section>' +
 
       '<section class="admin-section" id="s-spread"><h2>Spread the word</h2><p class="muted measure">WhatsApp stays where people talk. These open it with the message written, ready for you to pick the group and send.</p><div class="row-actions" style="margin-top:12px">' +
-      (digest ? '<a class="btn gold small" href="' + esc(Core.whatsappUrl(digest)) + '" target="_blank" rel="noopener">Post the weekly update on WhatsApp</a><button class="btn quiet small" id="copyDigest">Copy the update</button>' : '<span class="muted">Nothing new for a weekly update right now.</span>') +
-      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(invite)) + '" target="_blank" rel="noopener">Invite people on WhatsApp</a></div>' +
+      (digest ? '<a class="btn gold small" href="' + esc(Core.whatsappUrl(digest)) + '" target="_blank" rel="noopener" id="postDigest">Post the weekly update on WhatsApp</a><button class="btn quiet small" id="copyDigest">Copy the update</button>' : '<span class="muted">Nothing new for a weekly update right now.</span>') +
+      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(invite)) + '" target="_blank" rel="noopener" id="postInvite">Invite people on WhatsApp</a></div>' +
       (notIn.length ? '<details class="not-in"><summary>' + notIn.length + ' haven\'t signed in yet</summary><p class="muted" dir="auto">' + esc(notIn.map(function (m) { return m.name; }).join(', ')) + '</p></details>' : '') + '</section>' +
 
       '<section class="admin-section" id="s-rules"><h2>Who sees whom in the directory</h2><div class="table-wrap matrix"><table class="matrix">' +
@@ -78,7 +78,7 @@
       '<div class="table-wrap"><table class="members-table"><thead><tr><th>Name</th><th>Email</th><th>Second email</th><th>Tier</th><th>Cohort</th><th>Last seen</th><th>Came to</th><th>Active</th><th></th></tr></thead><tbody>' +
       data.members.map(function (m) {
         var self = m.id === state.me.id;
-        return '<tr data-member="' + esc(m.id) + '" data-search="' + esc((m.name + ' ' + m.email).toLowerCase()) + '">' +
+        return '<tr data-member="' + esc(m.id) + '">' +
           '<td><span class="cell-label" aria-hidden="true">Name</span><input type="text" data-f="name" value="' + esc(m.name) + '" maxlength="60" dir="auto" aria-label="Name"></td>' +
           '<td><span class="cell-label" aria-hidden="true">Email</span><input type="email" data-f="email" value="' + esc(m.email) + '" placeholder="Not linked yet" aria-label="Email"></td>' +
           '<td><span class="cell-label" aria-hidden="true">Second email</span><input type="text" data-f="alt_emails" value="' + esc(m.alt_emails) + '" aria-label="Second email"></td>' +
@@ -104,7 +104,7 @@
       '<div class="row-actions"><button class="btn quiet" type="submit">Add partner</button></div></form>' +
       '<p class="muted small" style="margin-top:16px">Next meeting on Home comes from the next event marked public. Past meetings come from public events with a recap. Tiers and leader photos live in content.js, see docs/05-operations.md.</p></section>' +
 
-      '<section class="admin-section" id="s-log"><h2>Recent activity</h2><div class="log">' + (data.log.length ? data.log.map(function (l) {
+      '<section class="admin-section" id="s-log"><h2>Recent activity</h2><div class="log ph-sensitive">' + (data.log.length ? data.log.map(function (l) {
         return '<div><span class="muted">' + esc(String(l.at).slice(0, 10)) + '</span> ' + esc(nameOf(data, l.actor)) + ': ' + esc(l.action) + (l.detail ? ' <span class="muted">' + esc(l.detail) + '</span>' : '') + '</div>';
       }).join('') : '<p class="muted">Nothing yet.</p>') + '</div></section>';
 
@@ -117,6 +117,7 @@
           setBusy(b, true, 'Saving…');
           try {
             await Api.call('admin.handleInquiry', { id: row.dataset.inquiry, status: b.dataset.inq });
+            Analytics.track('partner message handled', { status: b.dataset.inq });
             toast('Saved');
             row.remove();
           } catch (e) { setBusy(b, false); toast(e.message); }
@@ -124,13 +125,17 @@
       });
     });
     var cd = $('#copyDigest');
-    if (cd) cd.addEventListener('click', function () { App.copyText(digest); });
+    if (cd) cd.addEventListener('click', function () { Analytics.track('digest copied'); App.copyText(digest); });
+    var pd = $('#postDigest');
+    if (pd) pd.addEventListener('click', function () { Analytics.track('digest posted'); });
+    $('#postInvite').addEventListener('click', function () { Analytics.track('invite shared', { not_signed_in: notIn.length }); });
     $('#gradGo').addEventListener('click', async function (e) {
       var cohort = $('#gradCohort').value.trim();
       if (!cohort || !window.confirm('Move the club members of ' + Core.cohortLabel(cohort) + ' to the community?')) return;
       setBusy(e.target, true, 'Moving…');
       try {
         var r = await Api.call('admin.graduateCohort', { cohort: cohort });
+        Analytics.track('cohort ended', { cohort: cohort, moved: r.moved });
         toast(r.moved + ' moved to the community');
         await App.refresh();
         wireAdmin();
@@ -145,6 +150,7 @@
       setBusy(btn, true);
       try {
         await Api.call('admin.setSettings', { values: { applications_open: !!fd.get('applications_open'), apply_url: fd.get('apply_url'), applications_note: fd.get('applications_note'), partner_intro: fd.get('partner_intro'), notify_email: fd.get('notify_email') } });
+        Analytics.track('public pages saved', { applications_open: !!fd.get('applications_open') });
         toast('Saved');
         App.refreshPublic();
       } catch (err) { showErrors(sf, err); }
@@ -159,6 +165,7 @@
           var p = list.filter(function (x) { return x.id === row.dataset.partner; })[0];
           try {
             var r = await Api.call('admin.savePartner', { partner: { id: p.id, name: p.name, note: p.note, url: p.url, logo: p.logo, active: false } });
+            Analytics.track('partner removed');
             drawPartners(r.partners);
             toast('Saved');
             App.refreshPublic();
@@ -174,6 +181,7 @@
       var fd = new FormData(pf);
       try {
         var r = await Api.call('admin.savePartner', { partner: { name: fd.get('name'), note: fd.get('note'), url: fd.get('url'), logo: fd.get('logo') } });
+        Analytics.track('partner added');
         drawPartners(r.partners);
         pf.reset();
         toast('Saved');
@@ -187,6 +195,7 @@
         c.disabled = true;
         try {
           await Api.call('admin.setRule', { viewer: parts[0], subject: parts[1], value: c.checked });
+          Analytics.track('rule changed', { viewer: parts[0], subject: parts[1], value: c.checked });
           App.refresh().catch(function () {});
           toast('Rule saved');
         } catch (e) { c.checked = !c.checked; toast(e.message); }
@@ -199,6 +208,7 @@
         setBusy(btn, true, decision === 'approve' ? 'Approving…' : 'Declining…');
         try {
           await Api.call('admin.handleRequest', { requestId: row.dataset.request, decision: decision, memberId: $('[data-link]', row).value || undefined, tier: $('[data-new-tier]', row).value });
+          Analytics.track('access request handled', { decision: decision, linked: !!$('[data-link]', row).value });
           App.refresh().catch(function () {});
           toast(decision === 'approve' ? 'Approved, and we emailed them' : 'Declined');
           wireAdmin();
@@ -217,6 +227,7 @@
       setBusy(btn, true, 'Adding…');
       try {
         var r = await Api.call('admin.addMembers', { lines: $('#bulk').value, tier: $('#bulkTier').value, cohort: $('#bulkCohort').value });
+        Analytics.track('members imported', { added: r.added, updated: r.updated || 0, skipped: r.skipped.length, tier: $('#bulkTier').value });
         App.refresh().catch(function () {});
         toast(r.added + (r.updated ? ' added, ' + r.updated + ' updated' : ' added'));
         await wireAdmin();
@@ -233,6 +244,7 @@
         setBusy(btn, true, 'Saving…');
         try {
           await Api.call('admin.saveMember', { member: { id: row.dataset.member, name: val('name'), email: val('email'), alt_emails: val('alt_emails'), tier: val('tier'), cohort: val('cohort'), active: val('active') } });
+          Analytics.track('member saved', { tier: val('tier'), active: val('active') });
           App.refresh().catch(function () {});
           setBusy(btn, false);
           toast('Saved');
@@ -240,9 +252,11 @@
       });
     });
 
+    var searchText = {};
+    data.members.forEach(function (m) { searchText[m.id] = (m.name + ' ' + m.email).toLowerCase(); });
     $('#adminFilter').addEventListener('input', function (e) {
       var q = e.target.value.trim().toLowerCase();
-      $$('[data-member]').forEach(function (row) { row.style.display = !q || row.dataset.search.indexOf(q) !== -1 ? '' : 'none'; });
+      $$('[data-member]').forEach(function (row) { row.style.display = !q || searchText[row.dataset.member].indexOf(q) !== -1 ? '' : 'none'; });
     });
 
     [['#exportCsv', 'admin.export'], ['#exportAtt', 'admin.exportAttendance']].forEach(function (x) {
@@ -251,6 +265,7 @@
         setBusy(btn, true, 'Exporting…');
         try {
           var r = await Api.call(x[1]);
+          Analytics.track('export downloaded', { kind: x[1] === 'admin.export' ? 'members' : 'attendance' });
           App.downloadFile(r.filename, 'text/csv;charset=utf-8', '﻿' + r.csv);
         } catch (err) { toast(err.message); }
         setBusy(btn, false);
