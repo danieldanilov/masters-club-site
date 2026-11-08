@@ -574,6 +574,13 @@ var Core = (function () {
     return { ok: true, next: { first: state.first, n: state.n + 1, last: now } };
   }
 
+  // The square to keep from a photo: all of a square one, the middle of a wide one, and near the
+  // top of a tall one, where the face usually is.
+  function cropSquare(w, h) {
+    var side = Math.min(w, h);
+    return { x: Math.round((w - side) / 2), y: h > w ? Math.round((h - side) * 0.2) : 0, side: side };
+  }
+
   /* ---------- sheet and csv safety ---------- */
 
   function sanitizeCell(v) {
@@ -681,6 +688,7 @@ var Core = (function () {
     whatsappUrl: whatsappUrl,
     buildDigest: buildDigest,
     splitPosition: splitPosition,
+    cropSquare: cropSquare,
     isPeopleTable: isPeopleTable,
     parsePeopleTable: parsePeopleTable,
     makeCode: makeCode,

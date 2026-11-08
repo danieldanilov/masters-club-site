@@ -22,7 +22,7 @@
       '<section class="statement"><div class="wrap"><p>' + esc(c.giveFirst) + ' <span>' + esc(c.giveFirstRest) + '</span></p></div></section>' +
       '<div class="wrap"><section class="past"><div class="past-head"><h2>Who has been in the room</h2><a class="link" href="#/meetings">All meetings</a></div>' +
       '<div class="rail">' + c.meetings.map(function (mt) {
-        return '<a href="#/meetings?m=' + esc(mt.id) + '"><img src="' + esc(mt.poster) + '" alt="" loading="lazy" width="640" height="640">' +
+        return '<a href="#/meetings?m=' + esc(mt.id) + '"><img src="' + esc(mt.poster) + '" alt="" loading="lazy" width="640" height="800">' +
           '<span class="who">' + esc(mt.speaker) + '</span><span class="when">' + esc(longDate(mt.date)) + '</span></a>';
       }).join('') + '</div></section>' +
       '<section class="invite">' +
@@ -47,7 +47,7 @@
       '<p class="lead measure" style="margin-top:16px">Every meeting opens with food and structured networking, then a talk or workshop with someone worth hearing.</p>' +
       '<div class="meetings">' + list.map(function (m, i) {
         return '<article class="meeting" id="m-' + esc(m.id) + '">' +
-          (m.poster ? '<img class="poster" src="' + esc(m.poster) + '" alt="Poster for ' + esc(m.speaker) + '" width="640" height="640"' + (i > 1 ? ' loading="lazy"' : '') + '>' : '') +
+          (m.poster ? '<img class="poster" src="' + esc(m.poster) + '" alt="Poster for ' + esc(m.speaker) + '" width="640" height="800"' + (i > 1 ? ' loading="lazy"' : '') + '>' : '') +
           '<div class="body">' +
           '<p class="meta"><time datetime="' + esc(m.date) + '">' + esc(longDate(m.date)) + '</time><span>' + esc(m.kind) + '</span></p>' +
           '<h2>' + esc(m.speaker) + '</h2><p class="muted role">' + esc(m.role) + '</p>' +

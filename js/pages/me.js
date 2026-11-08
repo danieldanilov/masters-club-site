@@ -90,10 +90,10 @@
       var reader = new FileReader();
       var img = new Image();
       img.onload = function () {
-        var side = Math.min(img.naturalWidth, img.naturalHeight);
+        var box = Core.cropSquare(img.naturalWidth, img.naturalHeight);
         var c = document.createElement('canvas');
         c.width = c.height = 256;
-        c.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+        c.getContext('2d').drawImage(img, box.x, box.y, box.side, box.side, 0, 0, 256, 256);
         var q = 0.8;
         var data = c.toDataURL('image/jpeg', q);
         while (data.length > 40000 && q > 0.3) { q -= 0.1; data = c.toDataURL('image/jpeg', q); }
