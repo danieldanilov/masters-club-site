@@ -121,10 +121,15 @@ var Analytics = (function () {
       if (ph()) posthog.captureException(e, props || {});
     },
 
-    // A feature flag: true, false, or a variant name. Off the live site, every flag is off.
+    // A feature flag: true, false, or a variant name. Until PostHog's flags arrive it's false, so
+    // a flagged thing starts hidden and never flashes in for someone it's off for. Off the live
+    // site every flag is off, unless localStorage 'mc-flags-v1' turns it on for local work and
+    // the tests: {"portal-board": true}. The live site ignores that key.
     // onFlags runs once flags have loaded, and again whenever they change.
     flag: function (key) {
-      return ph() ? posthog.getFeatureFlag(key) || false : false;
+      if (ph()) return posthog.getFeatureFlag(key) || false;
+      if (typeof CONFIG !== 'undefined' && CONFIG.ENV === 'production') return false;
+      try { return JSON.parse(localStorage.getItem('mc-flags-v1') || '{}')[key] || false; } catch (e) { return false; }
     },
     onFlags: function (fn) {
       if (ph()) posthog.onFeatureFlags(fn); else fn([]);

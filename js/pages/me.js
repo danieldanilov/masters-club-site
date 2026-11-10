@@ -48,12 +48,13 @@
   function wireMe() {
     var f = $('#profileForm');
     var u = state.me;
+    // Built by the same function the server uses for the directory, so it shows exactly what others will see.
     function preview() {
       var r = readProfileForm(f);
       var v = Core.validateProfile(r.profile).value;
       v.photo = u.profile.photo;
-      if (!v.show_phone) delete v.phone;
-      $('#preview').innerHTML = App.profileSheet({ id: u.id, name: r.name || u.name, tier: u.tier, cohort: u.cohort, joined: true, profile: v }, true);
+      var entry = Core.directoryEntry({ id: u.id, name: r.name || u.name, tier: u.tier, cohort: u.cohort, email: u.email, joined_on: 'yes' }, v, false);
+      $('#preview').innerHTML = App.profileSheet(entry, true);
     }
     f.addEventListener('input', preview);
     preview();
@@ -79,7 +80,7 @@
       } catch (err) {
         setBusy(btn, false);
         if (err.code !== 'unauthorized') showErrors(f, err);
-        else render();
+        else App.render();
       }
     });
   }

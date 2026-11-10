@@ -17,8 +17,9 @@ var Core = (function () {
   };
   // Sign-in codes sent by email. A code lasts 10 minutes and allows 5 tries. Each address gets
   // a code at most every 30 seconds and 3 in 6 hours; addresses not on the list share 20 in
-  // 6 hours, and get none once the day's mail is down to the last 20 (kept for members).
-  var CODE_LIMITS = { ttlMs: 10 * 60 * 1000, maxTries: 5, gapMs: 30 * 1000, perWindow: 3, windowMs: 6 * 60 * 60 * 1000, strangersPerWindow: 20, quotaReserve: 20 };
+  // 6 hours, and get none once the day's mail is down to the last 20 (kept for members). Access
+  // requests from guests share 10 in 6 hours, and leaders' notification emails stop at that reserve.
+  var CODE_LIMITS = { ttlMs: 10 * 60 * 1000, maxTries: 5, gapMs: 30 * 1000, perWindow: 3, windowMs: 6 * 60 * 60 * 1000, strangersPerWindow: 20, quotaReserve: 20, requestsPerWindow: 10 };
   var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'hidden', 'bio', 'photo'];
   // Adding a kind of event or post is one line here; the forms and pages read these lists.
   var EVENT_KINDS = { meeting: 'Meeting', meetup: 'Meetup', dinner: 'Dinner', external: 'Outside event' };

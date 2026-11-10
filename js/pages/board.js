@@ -20,11 +20,11 @@
     var closed = p.status !== 'open' || p.expired;
     return '<article class="post" data-post="' + esc(p.id) + '" id="p-' + esc(p.id) + '"><div class="tags"><span class="tag">' + esc(Core.POST_KINDS[p.kind] || p.kind) + '</span>' +
       (p.status !== 'open' ? '<span class="tag unjoined">Closed</span>' : p.expired ? '<span class="tag unjoined">Expired</span>' : '') + '</div>' +
-      '<h2 class="title" dir="auto">' + esc(p.title) + '</h2>' +
+      '<h2 class="title ph-sensitive" dir="auto">' + esc(p.title) + '</h2>' +
       (p.company || p.location ? '<p class="muted ph-sensitive" dir="auto">' + esc([p.company, p.location].filter(Boolean).join(', ')) + '</p>' : '') +
       (p.body ? '<p class="details ph-sensitive" dir="auto">' + esc(p.body) + '</p>' : '') +
       (p.contact ? '<p dir="auto"><b>Contact:</b> <span class="ph-sensitive">' + esc(p.contact) + '</span></p>' : '') +
-      '<p class="muted small">Posted by <a class="person-link" href="#/members?m=' + esc(p.author.id) + '" dir="auto">' + esc(p.author.name) + '</a> on ' + esc(Core.shortDate(String(p.created_at).slice(0, 10))) + '</p>' +
+      '<p class="muted small">Posted by <a class="person-link" href="#/members?m=' + esc(p.author.id) + '" dir="auto">' + esc(p.author.name) + '</a> on ' + esc(Core.shortDate(new Date(p.created_at).toLocaleDateString('en-CA', { timeZone: Core.TIME_ZONE }))) + '</p>' +
       '<div class="row-actions">' + (p.link ? '<a class="btn quiet small" href="' + esc(p.link) + '" target="_blank" rel="noopener">Open the link</a>' : '') +
       '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a>' +
       (p.can_edit ? '<a class="link" href="#/post-edit?p=' + esc(p.id) + '">Edit</a><button class="link" data-close-post>' + (closed ? 'Bring it back' : 'Close it') + '</button>' : '') + '</div></article>';
@@ -129,6 +129,7 @@
     });
   }
 
-  App.route('#/board', { page: pageBoard, wire: wireBoard, member: true, onData: drawBoard });
-  App.route('#/post-edit', { page: pageEdit, wire: wireEdit, member: true });
+  // Leaders only for now, through the portal-board flag in PostHog: there are no job boards yet.
+  App.route('#/board', { page: pageBoard, wire: wireBoard, member: true, onData: drawBoard, flag: 'portal-board' });
+  App.route('#/post-edit', { page: pageEdit, wire: wireEdit, member: true, flag: 'portal-board' });
 })();

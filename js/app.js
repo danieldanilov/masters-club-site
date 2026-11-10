@@ -444,7 +444,7 @@ var App = (function () {
   function renderNav(route) {
     var links = [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners']];
     if (state.me) {
-      links = [['#/members', 'Directory'], ['#/events', 'Events'], ['#/board', 'Board'], ['#/me', 'My profile']];
+      links = [['#/members', 'Directory'], ['#/events', 'Events'], ['#/board', 'Board'], ['#/me', 'My profile']].filter(function (l) { return routeOn(l[0]); });
       if (state.me.tier === 'leader') links.push(['#/admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
     }
     // Signed in, the public pages step back to the footer.
@@ -494,9 +494,32 @@ var App = (function () {
     routes[hash] = def;
   }
 
+  // A page with a flag (the Board) exists only for those its PostHog flag is on for. Until flags
+  // load it's off, so it never flashes in for members; for a leader it appears once they arrive.
+  function routeOn(hash) {
+    var r = routes[hash];
+    return !(r && r.flag) || !!Analytics.flag(r.flag);
+  }
+  function flagsNow() {
+    return Object.keys(routes).filter(function (h) { return routes[h].flag; }).map(function (h) { return h + routeOn(h); }).join();
+  }
+  var flagState = '';
+  // Flags arrive after the page is drawn, and again on sign-in. Redraw only when one changed, and
+  // only the menu unless the open page is a flagged one, so a half-typed form is never wiped.
+  function flagsChanged() {
+    var now = flagsNow();
+    if (now === flagState) return;
+    flagState = now;
+    if (!state.me) return;
+    var at = routeOf();
+    if (routes[at.route] && routes[at.route].flag && state.data) render(); else renderNav(at.route);
+  }
+
   function render() {
     var at = routeOf();
     var r = routes[at.route] || routes['#/'];
+    // Signed in, a flagged page that's off opens Home, like an address that doesn't exist.
+    if (r.flag && state.me && !routeOn(at.route)) r = routes['#/'];
     renderNav(at.route);
     setMenu(false);
     closeSheet();
@@ -517,16 +540,22 @@ var App = (function () {
       });
       return;
     } else {
-      try {
-        app.innerHTML = r.page(at.params);
-        if (r.wire && r.wire(at.params) === 'keep-scroll') { mountSignIn(); return; }
-      } catch (e) {
-        // A page never stays stuck: say so, and the fresh data gets a chance to fix it.
+      // A page never stays stuck: say so, and the fresh data gets a chance to fix it. Pages that
+      // load more data finish after an await, so their errors arrive later and land here too.
+      var failed = function (e) {
         console.error(e);
         Analytics.error(e, { where: 'page draw', route: at.route });
         drawFailed = true;
         app.innerHTML = errorBlock({ message: "This page couldn't open. Try again in a moment." });
         wireRetry();
+      };
+      try {
+        app.innerHTML = r.page(at.params);
+        var wired = r.wire ? r.wire(at.params) : null;
+        if (wired && typeof wired.then === 'function') wired.catch(failed);
+        if (wired === 'keep-scroll') { mountSignIn(); return; }
+      } catch (e) {
+        failed(e);
         return;
       }
     }
@@ -548,6 +577,8 @@ var App = (function () {
     if (CONFIG.ENV !== 'production') $('#envNote').textContent = CONFIG.ENV + ' build with test data';
     if (!state.publicInfo) state.publicInfo = readJson('localStorage', PUBLIC_KEY);
     refreshPublic();
+    flagState = flagsNow();
+    Analytics.onFlags(flagsChanged);
     if (!Api.session()) {
       clearSaved();
       return render();
