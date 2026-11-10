@@ -81,17 +81,18 @@
     var i = info();
     var partners = i.partners || c.partners;
     var size = i.member_count ? '<p class="lead measure" style="margin-top:8px">' + i.member_count + ' members across ' + i.cohort_count + ' cohort' + (i.cohort_count === 1 ? '' : 's') + ' so far, with 40 to 50 more joining every cohort.</p>' : '';
-    return page('<h1>Work with the club</h1>' +
-      '<p class="lead measure" style="margin-top:16px">' + esc((i.settings && i.settings.partner_intro) || 'We partner slowly and choose companies whose involvement helps our members.') + '</p>' + size +
-      (partners.length ? '<section class="partners"><h2>Our partners</h2><div class="partner-grid">' + partners.map(partnerCard).join('') + '</div></section>' : '') +
-      '<div class="partner-deal"><p>' + esc(c.partnerDeal) + '</p><a class="btn gold" href="#/partners" data-to-form>Talk to us</a></div>' +
+    // On a laptop or bigger the intro sits beside the cards, and the panel beside the form.
+    return page('<div class="partners-top"><div class="partners-intro"><h1>Work with the club</h1>' +
+      '<p class="lead measure" style="margin-top:16px">' + esc((i.settings && i.settings.partner_intro) || 'We partner slowly and choose companies whose involvement helps our members.') + '</p>' + size + '</div>' +
+      (partners.length ? '<section class="partners"><h2>Our partners</h2><div class="partner-grid">' + partners.map(partnerCard).join('') + '</div></section>' : '') + '</div>' +
+      '<div class="partner-talk"><div class="partner-deal"><p>' + esc(c.partnerDeal) + '</p><a class="btn gold" href="#/partners" data-to-form>Talk to us</a></div>' +
       '<section class="partner-form" id="talk"><h2>Talk to us</h2><form class="form-grid" id="inquiry" novalidate>' +
       '<label>Your name<input type="text" name="name" maxlength="60" required autocomplete="name"><span class="field-error" data-err="name"></span></label>' +
       '<label>Company<input type="text" name="company" maxlength="60" required autocomplete="organization"><span class="field-error" data-err="company"></span></label>' +
       '<label>Work email<input type="email" name="email" required autocomplete="email"><span class="field-error" data-err="email"></span></label>' +
       '<label>How would you like to work with the club?<textarea name="message" rows="4" maxlength="1000" required dir="auto"></textarea><span class="field-error" data-err="message"></span></label>' +
       '<label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>' +
-      '<div class="row-actions"><button class="btn gold" type="submit">Send</button></div></form></section>');
+      '<div class="row-actions"><button class="btn gold" type="submit">Send</button></div></form></section></div>');
   }
 
   function wirePartners() {

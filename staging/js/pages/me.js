@@ -9,7 +9,7 @@
     var opt = function (list, val) { return list.map(function (i) { return '<option ' + (val === i ? 'selected' : '') + '>' + esc(i) + '</option>'; }).join(''); };
     return page('<div class="page-head"><h1>' + (!first ? 'Edit your profile' : u.hasProfile ? 'Welcome. Check your profile' : 'Welcome. Fill in your profile') + '</h1></div>' +
       (first ? '<p class="lead measure" style="margin-top:-8px">' + (u.hasProfile ? 'We filled this in from your application. Fix anything that\'s off, and save.' : 'This is how other members find you. It takes a minute, and you can change it any time.') + ' <a class="link" href="#/members">Skip for now</a></p>' : '') +
-      '<div class="two" style="margin-top:28px"><form class="form-grid" id="profileForm" novalidate>' +
+      '<div class="two" style="margin-top:28px"><form class="form-grid cols" id="profileForm" novalidate>' +
       '<div class="photo-row"><span id="myPhoto">' + App.avatar(u, 'lg') + '</span><div class="row-actions"><label class="btn quiet small file-btn">' + (p.photo ? 'Change photo' : 'Add a photo') + '<input type="file" accept="image/*" aria-label="Choose a photo" class="ph-no-capture"></label>' +
       (p.photo ? '<button class="link" type="button" id="removePhoto">Remove photo</button>' : '') + '<span class="muted small">Google sign-in brings your Google photo.</span></div></div>' +
       '<label>Name<input type="text" name="name" value="' + esc(u.name) + '" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +

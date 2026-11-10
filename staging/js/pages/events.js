@@ -37,8 +37,8 @@
         '<span class="muted" dir="auto">' + esc(Core.weekday(e.date)) + ' at ' + esc(e.time) + (e.place ? ', ' + esc(e.place) : '') + '</span>' +
         '<span class="tags"><span class="tag">' + esc(Core.EVENT_KINDS[e.kind] || e.kind) + '</span>' + statusLine(e) + '</span></span></a>';
     };
-    $('#eventList').innerHTML = (next.length ? next.map(row).join('') : '<div class="empty">Nothing on the calendar yet. Post a low-key meetup, or check back soon.</div>') +
-      (past.length ? '<h2 class="past-title">Recently</h2>' + past.map(row).join('') : '');
+    $('#eventList').innerHTML = '<div class="event-cols"><div class="event-next">' + (next.length ? next.map(row).join('') : '<div class="empty">Nothing on the calendar yet. Post a low-key meetup, or check back soon.</div>') + '</div>' +
+      (past.length ? '<div class="event-past"><h2 class="past-title">Recently</h2>' + past.map(row).join('') + '</div>' : '') + '</div>';
   }
 
   /* ---------- one event ---------- */
@@ -72,7 +72,7 @@
       }
     }
     var others = e.going_count - e.attendees.length;
-    return '<h1 dir="auto">' + esc(e.title) + '</h1>' +
+    return '<div class="event-layout"><div class="event-main"><h1 dir="auto">' + esc(e.title) + '</h1>' +
       '<div class="tags" style="margin-top:12px"><span class="tag">' + esc(Core.EVENT_KINDS[e.kind] || e.kind) + '</span><span class="tag">' + esc(audienceLabel(e.audience)) + '</span>' + (e.status === 'cancelled' ? statusLine(e) : '') + '</div>' +
       '<p class="lead" style="margin-top:16px">' + esc(when(e)) + (e.end_time ? ' to ' + esc(e.end_time) : '') + '</p>' +
       (e.place ? '<p dir="auto">' + (e.map_url ? '<a class="link" href="' + esc(e.map_url) + '" target="_blank" rel="noopener">' + esc(e.place) + '</a>' : esc(e.place)) + '</p>' : '') +
@@ -84,14 +84,14 @@
       (e.me.group ? '<p class="you">Your table: ' + esc(e.me.group) + (e.me.groupmates.length ? ', with ' + esc(e.me.groupmates.join(', ')) : '') + '</p>' : '') +
       '<div class="actions event-actions"><a href="' + esc(Core.googleCalendarUrl(e, link)) + '" target="_blank" rel="noopener" class="btn quiet small ph-no-capture" data-gcal>Google Calendar</a>' +
       '<button class="btn quiet small" data-ics>Apple or Outlook</button>' +
-      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a></div>' +
-      '<h2 class="sub">Who\'s coming</h2>' +
+      '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a></div></div>' +
+      '<aside class="event-side"><h2 class="sub">Who\'s coming</h2>' +
       (e.going_count ? '<p>' + e.attendees.map(function (a) { return '<a class="person-link" href="#/members?m=' + esc(a.id) + '" dir="auto">' + esc(a.name) + '</a>'; }).join(', ') +
         (others > 0 ? (e.attendees.length ? ' and ' : '') + others + ' more' : '') + '</p>' : '<p class="muted">Nobody yet.</p>') +
       (e.waitlist_count ? '<p class="muted">' + e.waitlist_count + ' on the waitlist</p>' : '') +
       (e.owners.length ? '<p class="muted">Run by ' + esc(e.owners.map(function (o) { return o.name; }).join(', ')) + '</p>' : '') +
       (e.can_manage ? '<div class="row-actions" style="margin-top:28px"><a class="link" href="#/event-roster?e=' + esc(e.id) + '">Manage sign-ups</a><a class="link" href="#/event-edit?e=' + esc(e.id) + '">Edit</a>' +
-        '<button class="link" data-cancel>' + (e.status === 'cancelled' ? 'Bring it back' : 'Cancel the event') + '</button></div>' : '');
+        '<button class="link" data-cancel>' + (e.status === 'cancelled' ? 'Bring it back' : 'Cancel the event') + '</button></div>' : '') + '</aside></div>';
   }
 
   function wireEvent(params) {

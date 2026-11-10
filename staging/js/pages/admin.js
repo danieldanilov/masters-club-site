@@ -51,7 +51,7 @@
     $('#adminBody').innerHTML =
       '<p class="stats">' + st.joined + ' of ' + st.members + ' have signed in, ' + st.active30 + ' came by in the last 30 days, ' + st.profiles + ' have a profile.</p>' +
       '<nav class="admin-jump" aria-label="Admin sections"><button class="chip" type="button" data-jump="s-waiting">Waiting</button><button class="chip" type="button" data-jump="s-spread">Spread the word</button><button class="chip" type="button" data-jump="s-add">Add people</button><button class="chip" type="button" data-jump="s-members">Members</button><button class="chip" type="button" data-jump="s-public">Public pages</button><button class="chip" type="button" data-jump="s-rules">Who sees whom</button><button class="chip" type="button" data-jump="s-log">Activity</button></nav>' +
-      '<section class="admin-section" id="s-waiting" style="margin-top:8px"><h2>Access requests' + (pending.length ? ' <span class="badge">' + pending.length + '</span>' : '') + '</h2>' + requestsHtml + '</section>' +
+      '<section class="admin-section" id="s-waiting"><h2>Access requests' + (pending.length ? ' <span class="badge">' + pending.length + '</span>' : '') + '</h2>' + requestsHtml + '</section>' +
       '<section class="admin-section"><h2>Partner messages' + (inquiries.length ? ' <span class="badge">' + inquiries.length + '</span>' : '') + '</h2>' + inquiriesHtml + '</section>' +
 
       '<section class="admin-section" id="s-spread"><h2>Spread the word</h2><p class="muted measure">WhatsApp stays where people talk. These open it with the message written, ready for you to pick the group and send.</p><div class="row-actions" style="margin-top:12px">' +
@@ -92,19 +92,19 @@
           '<td><button class="btn quiet small" data-save>Save</button></td></tr>';
       }).join('') + '</tbody></table></div></section>' +
 
-      '<section class="admin-section" id="s-public"><h2>Public pages</h2><form class="form-grid" id="settingsForm" novalidate style="max-width:720px">' +
+      '<section class="admin-section" id="s-public"><h2>Public pages</h2><div class="admin-pair"><form class="form-grid" id="settingsForm" novalidate style="max-width:720px">' +
       '<label class="check-line"><input type="checkbox" name="applications_open" ' + (set.applications_open === undefined || Core.toBool(set.applications_open) ? 'checked' : '') + '> Applications are open</label>' +
       '<label>Application link<input type="url" name="apply_url" value="' + esc(set.apply_url || CONTENT.applyUrl) + '"><span class="field-error" data-err="apply_url"></span></label>' +
       '<label>A line above the application button <span class="hint">Optional, like the closing date</span><input type="text" name="applications_note" value="' + esc(set.applications_note || '') + '" maxlength="200" dir="auto"><span class="field-error" data-err="applications_note"></span></label>' +
       '<label>Opening line on the Partners page <span class="hint">Optional</span><textarea name="partner_intro" rows="2" maxlength="500" dir="auto">' + esc(set.partner_intro || '') + '</textarea><span class="field-error" data-err="partner_intro"></span></label>' +
       '<label>Email leaders about new requests and partner messages at <span class="hint">Never shown publicly</span><input type="email" name="notify_email" value="' + esc(set.notify_email || '') + '"><span class="field-error" data-err="notify_email"></span></label>' +
       '<div class="row-actions"><button class="btn gold" type="submit">Save public pages</button></div></form>' +
-      '<h3 style="margin-top:36px">Partners on the public page</h3><div id="partnerList"></div>' +
+      '<div class="admin-partners"><h3>Partners on the public page</h3><div id="partnerList"></div>' +
       '<form class="form-grid" id="partnerForm" novalidate style="max-width:720px;margin-top:16px"><input type="hidden" name="id"><div class="form-row"><label>Name<input type="text" name="name" maxlength="60"><span class="field-error" data-err="name"></span></label>' +
       '<label>Line about them<input type="text" name="note" maxlength="200" dir="auto"><span class="field-error" data-err="note"></span></label></div>' +
       '<div class="form-row"><label>Website<input type="url" name="url" placeholder="https://..."><span class="field-error" data-err="url"></span></label><label>Logo link<input type="url" name="logo" placeholder="https://..."><span class="field-error" data-err="logo"></span></label></div>' +
-      '<div class="row-actions"><button class="btn quiet" type="submit" data-partner-save>Add partner</button><button class="link" type="button" data-partner-cancel hidden>Cancel</button></div></form>' +
-      '<p class="muted small" style="margin-top:16px">Next meeting on Home comes from the next event marked public. Past meetings come from public events with a recap. Tiers and leader photos live in content.js, see docs/05-operations.md.</p></section>' +
+      '<div class="row-actions"><button class="btn quiet" type="submit" data-partner-save>Add partner</button><button class="link" type="button" data-partner-cancel hidden>Cancel</button></div></form></div></div>' +
+      '<p class="muted small measure" style="margin-top:16px">Next meeting on Home comes from the next event marked public. Past meetings come from public events with a recap. Tiers and leader photos live in content.js, see docs/05-operations.md.</p></section>' +
 
       '<section class="admin-section" id="s-log"><h2>Recent activity</h2><div class="log ph-sensitive">' + (data.log.length ? data.log.map(function (l) {
         return '<div><span class="muted">' + esc(String(l.at).slice(0, 10)) + '</span> ' + esc(nameOf(data, l.actor)) + ': ' + esc(l.action) + (l.detail ? ' <span class="muted">' + esc(l.detail) + '</span>' : '') + '</div>';
