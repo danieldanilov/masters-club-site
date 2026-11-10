@@ -5,6 +5,9 @@ var CONTENT = {
 
   club: 'A hand-picked cohort each semester, up to 50 people, meeting for curated sessions with founders, operators and investors.',
   community: 'Everyone who has been through a cohort, for life: dinners, low-key meetups, and a directory of who can help with what.',
+  // About: why the club exists, in a few sentences.
+  mission: "Reichman's master's programmes are full of people building companies, teams and careers. The club brings the most driven of them together every semester, and the community keeps them close for life. It's for people who do, not just talk, and who give first.",
+
   giveFirst: 'Give first.',
   giveFirstRest: 'Intros, advice, jobs. You get out of the club what you put in.',
 
@@ -17,9 +20,6 @@ var CONTENT = {
   },
 
   applyUrl: 'https://forms.gle/umgLKBHcCzH7N6uS8',
-
-  // Leave empty to hide the "Talk to us" button on the Partners page.
-  partnerEmail: '',
 
   // Photos are built from assets/leaders by tools/build-images.sh.
   leaders: [
@@ -91,5 +91,10 @@ var CONTENT = {
     { name: 'Playtika', note: 'Hosts meetings 1 and 3 of Cohort 2', initial: 'P' }
   ],
 
-  partnerDeal: "We work out each partnership with each partner, so it's good for them and for our members. Tell us what you have in mind and we'll come back with the details."
+  // The Partners page: who a partner reaches, then how a partnership works. Admin's "Opening line
+  // on the Partners page" replaces partnerPitch when it's filled in.
+  partnerPitch: "Every cohort, the club hand-picks 40 to 50 of the best master's students at Reichman. They stay in the community for life, so every intake widens the circle a partner reaches.",
+  partnerDeal: "We shape each partnership with the partner, so it works for you and for our members. Tell us what you have in mind and we'll come back with the details.",
+  // The last card in the partner grid, which leads to the form.
+  partnerInvite: { title: 'This could be you', note: "Tell us how you'd like to work with the club." }
 };

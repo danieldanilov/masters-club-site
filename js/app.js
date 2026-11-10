@@ -241,7 +241,8 @@ var App = (function () {
     if (gsiReady) return gsiReady;
     gsiReady = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client';
+      // hl=en: otherwise Google draws the button in the visitor's Google language, Hebrew for most members.
+      s.src = 'https://accounts.google.com/gsi/client?hl=en';
       s.async = true;
       s.onload = function () {
         google.accounts.id.initialize({ client_id: CONFIG.GOOGLE_CLIENT_ID, callback: function (r) { handleCredential(r.credential); }, ux_mode: 'popup', auto_select: false });
@@ -253,9 +254,9 @@ var App = (function () {
     return gsiReady;
   }
 
-  // Google draws its button at exactly the width it's given, so it gets the room the card has,
-  // up to 280px and never under Google's 200px minimum.
-  function gsiWidth(slot) { return Math.max(200, Math.min(280, Math.floor(slot.clientWidth) || 280)); }
+  // Google draws its button at exactly the width it's given, so it gets the full width of the
+  // sign-in card, the same as the email field under it, within Google's 200 to 400px.
+  function gsiWidth(slot) { return Math.max(200, Math.min(400, Math.floor(slot.clientWidth) || 400)); }
 
   // Every place you can sign in: Google's button, then a code by email.
   function signInBlock() {
@@ -269,7 +270,7 @@ var App = (function () {
     if (!slots.length) return;
     if (CONFIG.DEV_SIGNIN) {
       slots.forEach(function (slot) {
-        // The stand-in keeps the fixed width Google's button would get.
+        // The stand-in takes the width Google's button would get.
         slot.innerHTML = '<form class="dev-signin" data-dev-signin style="width:' + gsiWidth(slot) + 'px"><input type="email" name="email" placeholder="Test email" required aria-label="Test email">' +
           '<button class="btn navy" type="submit">Sign in (dev)</button></form>';
         $('form', slot).addEventListener('submit', function (e) {

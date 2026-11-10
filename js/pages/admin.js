@@ -103,6 +103,7 @@
       '<form class="form-grid" id="partnerForm" novalidate style="max-width:720px;margin-top:16px"><input type="hidden" name="id"><div class="form-row"><label>Name<input type="text" name="name" maxlength="60"><span class="field-error" data-err="name"></span></label>' +
       '<label>Line about them<input type="text" name="note" maxlength="200" dir="auto"><span class="field-error" data-err="note"></span></label></div>' +
       '<div class="form-row"><label>Website<input type="url" name="url" placeholder="https://..."><span class="field-error" data-err="url"></span></label><label>Logo link<input type="url" name="logo" placeholder="https://..."><span class="field-error" data-err="logo"></span></label></div>' +
+      '<div class="form-row"><label>Place on the page <span class="hint">1 shows first; empty goes after the numbered ones</span><input type="number" name="position" min="1" max="999" step="1" inputmode="numeric"><span class="field-error" data-err="position"></span></label></div>' +
       '<div class="row-actions"><button class="btn quiet" type="submit" data-partner-save>Add partner</button><button class="link" type="button" data-partner-cancel hidden>Cancel</button></div></form></div></div>' +
       '<p class="muted small measure" style="margin-top:16px">Next meeting on Home comes from the next event marked public. Past meetings come from public events with a recap. Tiers and leader photos live in content.js, see docs/05-operations.md.</p></section>' +
 
@@ -160,13 +161,13 @@
     });
     function drawPartners(list) {
       $('#partnerList').innerHTML = list.filter(function (p) { return p.active; }).map(function (p) {
-        return '<div class="request" data-partner="' + esc(p.id) + '"><div><span class="who" dir="auto">' + esc(p.name) + '</span> <span class="muted" dir="auto">' + esc(p.note) + '</span></div><div class="row-actions"><button class="btn quiet small" data-edit-partner>Edit</button><button class="btn quiet small" data-unlist>Take off the page</button></div></div>';
+        return '<div class="request" data-partner="' + esc(p.id) + '"><div>' + (p.position ? '<span class="place">' + p.position + '.</span> ' : '') + '<span class="who" dir="auto">' + esc(p.name) + '</span> <span class="muted" dir="auto">' + esc(p.note) + '</span></div><div class="row-actions"><button class="btn quiet small" data-edit-partner>Edit</button><button class="btn quiet small" data-unlist>Take off the page</button></div></div>';
       }).join('') || '<p class="muted">None yet.</p>';
       $$('[data-partner]').forEach(function (row) {
         // Edit loads the partner into the form below, which then saves it instead of adding one.
         $('[data-edit-partner]', row).addEventListener('click', function () {
           var p = list.filter(function (x) { return x.id === row.dataset.partner; })[0];
-          ['id', 'name', 'note', 'url', 'logo'].forEach(function (k) { pf.elements[k].value = p[k] || ''; });
+          ['id', 'name', 'note', 'url', 'logo', 'position'].forEach(function (k) { pf.elements[k].value = p[k] || ''; });
           partnerMode(true);
           pf.elements.name.focus();
         });
@@ -196,7 +197,7 @@
       var fd = new FormData(pf);
       var id = fd.get('id');
       try {
-        var partner = { name: fd.get('name'), note: fd.get('note'), url: fd.get('url'), logo: fd.get('logo') };
+        var partner = { name: fd.get('name'), note: fd.get('note'), url: fd.get('url'), logo: fd.get('logo'), position: fd.get('position') };
         if (id) partner.id = id;
         var r = await Api.call('admin.savePartner', { partner: partner });
         Analytics.track(id ? 'partner edited' : 'partner added');

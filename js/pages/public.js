@@ -36,12 +36,16 @@
       '</div>';
   }
 
+  // Why the club exists beside a field of the tie, then the people who run it as large square photos.
   function pageAbout() {
-    return page('<h1>Who runs it</h1>' +
-      '<p class="lead measure" style="margin-top:16px">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
+    return page('<section class="about-top"><div class="about-mission"><h1>Why the club exists</h1>' +
+      '<p class="lead measure mission">' + esc(CONTENT.mission) + '</p></div>' +
+      '<div class="tie-field" aria-hidden="true"></div></section>' +
+      '<section class="about-people"><h2>Who runs it</h2>' +
+      '<p class="lead measure">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
       '<div class="people">' + CONTENT.leaders.map(function (p) {
-        return '<div class="person">' + avatar({ name: p.name, profile: { photo: p.photo } }, 'lg') + '<div><div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div></div></div>';
-      }).join('') + '</div>');
+        return '<div class="person">' + avatar({ name: p.name, profile: { photo: p.photo } }, 'portrait') + '<div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div></div>';
+      }).join('') + '</div></section>');
   }
 
   function pageMeetings() {
@@ -76,31 +80,41 @@
       (host ? '<a class="link" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(host) + '</a>' : '') + '</div></article>';
   }
 
+  // The last card: an open invitation in the club's colours, leading to the form.
+  function inviteCard() {
+    var c = CONTENT.partnerInvite;
+    return '<a class="partner-card partner-invite" href="#/partners" data-to-form><div class="partner-logo"><span class="partner-wordmark">Your company</span></div>' +
+      '<div class="partner-body"><h3 class="name">' + esc(c.title) + '</h3><p class="muted">' + esc(c.note) + '</p><span class="link">Get in touch</span></div></a>';
+  }
+
+  // The pitch (who a partner reaches, how a deal works) beside the form, then the partners below
+  // for social proof, in the order Admin gives them, with the invitation last.
   function pagePartners() {
     var c = CONTENT;
     var i = info();
     var partners = i.partners || c.partners;
-    var size = i.member_count ? '<p class="lead measure" style="margin-top:8px">' + i.member_count + ' members across ' + i.cohort_count + ' cohort' + (i.cohort_count === 1 ? '' : 's') + ' so far, with 40 to 50 more joining every cohort.</p>' : '';
-    // On a laptop or bigger the intro sits beside the cards, and the panel beside the form.
-    return page('<div class="partners-top"><div class="partners-intro"><h1>Work with the club</h1>' +
-      '<p class="lead measure" style="margin-top:16px">' + esc((i.settings && i.settings.partner_intro) || 'We partner slowly and choose companies whose involvement helps our members.') + '</p>' + size + '</div>' +
-      (partners.length ? '<section class="partners"><h2>Our partners</h2><div class="partner-grid">' + partners.map(partnerCard).join('') + '</div></section>' : '') + '</div>' +
-      '<div class="partner-talk"><div class="partner-deal"><p>' + esc(c.partnerDeal) + '</p><a class="btn gold" href="#/partners" data-to-form>Talk to us</a></div>' +
-      '<section class="partner-form" id="talk"><h2>Talk to us</h2><form class="form-grid" id="inquiry" novalidate>' +
+    var pitch = (i.settings && i.settings.partner_intro) || c.partnerPitch;
+    return page('<div class="partners-top"><section class="partner-pitch"><h1>Work with the club</h1>' +
+      '<p class="lead">' + esc(pitch) + '</p><p>' + esc(c.partnerDeal) + '</p></section>' +
+      '<section class="partner-form banded" id="talk"><h2>Talk to us</h2><form class="form-grid" id="inquiry" novalidate>' +
       '<label>Your name<input type="text" name="name" maxlength="60" required autocomplete="name"><span class="field-error" data-err="name"></span></label>' +
       '<label>Company<input type="text" name="company" maxlength="60" required autocomplete="organization"><span class="field-error" data-err="company"></span></label>' +
       '<label>Work email<input type="email" name="email" required autocomplete="email"><span class="field-error" data-err="email"></span></label>' +
       '<label>How would you like to work with the club?<textarea name="message" rows="4" maxlength="1000" required dir="auto"></textarea><span class="field-error" data-err="message"></span></label>' +
       '<label class="hp" aria-hidden="true">Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label>' +
-      '<div class="row-actions"><button class="btn gold" type="submit">Send</button></div></form></section></div>');
+      '<div class="row-actions"><button class="btn gold" type="submit">Send</button></div></form></section></div>' +
+      '<section class="partners"><h2>Our partners</h2><div class="partner-grid">' + partners.map(partnerCard).join('') + inviteCard() + '</div></section>');
   }
 
   function wirePartners() {
     var f = $('#inquiry');
-    $('[data-to-form]').addEventListener('click', function (e) {
-      e.preventDefault();
-      $('#talk').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      $('input[name=name]', f).focus({ preventScroll: true });
+    $$('[data-to-form]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        Analytics.track('partner invite clicked');
+        $('#talk').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+        $('input[name=name]', f).focus({ preventScroll: true });
+      });
     });
     f.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -120,20 +134,23 @@
   }
 
   // The one place to sign in or apply. Members-only pages show it too, with a line saying why.
+  // Applying is a navy panel that ends in the tie; signing in is a card with everything at one width.
   function pageJoin(params, opts) {
     var s = info().settings || {};
     var me = state.me;
     var gated = opts && opts.gated;
     return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
       '<h1>Two ways in</h1><div class="paths' + (params && params.has('apply') ? ' apply-first' : '') + '">' +
-      '<div class="path-apply"><h2>Apply to a cohort</h2><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
+      '<section class="path-apply"><div class="path-body"><h2>Apply to a cohort</h2><p class="muted">Open to Reichman master\'s students across programmes. Up to 50 members per cohort, activity in English.</p>' +
       (s.applications_note ? '<p class="on-navy-note">' + esc(s.applications_note) + '</p>' : '') +
       (s.applications_open === false ? '<p class="on-navy-note">Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.</p>'
-        : '<a class="btn gold" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Application form</a>') + '</div>' +
-      '<div class="path-signin"><h2>Already a member?</h2>' +
+        : '<a class="btn gold" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Application form</a>') +
+      '<dl class="path-gets"><div><dt>The club</dt><dd>' + esc(CONTENT.club) + '</dd></div><div><dt>The community</dt><dd>' + esc(CONTENT.community) + '</dd></div></dl></div>' +
+      '<div class="tie-field" aria-hidden="true"></div></section>' +
+      '<section class="path-signin banded"><h2>Already a member?</h2>' +
       (me ? '<p class="muted">You\'re signed in as ' + esc(me.name) + '.</p><a class="btn navy" href="#/members">Go to the directory</a>'
         : '<p class="muted">Current cohort or alumni, sign in with Google or with a code sent to your email. No password, and you stay signed in. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' + signInBlock()) +
-      '</div></div>');
+      '</section></div>');
   }
 
   function pageDenied(email) {
