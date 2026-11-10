@@ -87,8 +87,11 @@ var CONTENT = {
     }
   ],
 
+  // What Partners shows for the moment before the live list from Admin arrives. Keep it matching
+  // Admin's list and order, so the page doesn't change under the reader.
   partners: [
-    { name: 'Playtika', note: 'Hosts meetings 1 and 3 of Cohort 2', initial: 'P' }
+    { name: 'Reichman University', note: "The club's home university", url: 'https://www.runi.ac.il/en/', logo: 'img/partners/reichman-university.png' },
+    { name: 'Playtika', note: 'Hosts meetings 1 and 3 of Cohort 2', url: 'https://www.playtika.com', logo: 'img/partners/playtika.png' }
   ],
 
   // The Partners page: who a partner reaches, then how a partnership works. Admin's "Opening line
