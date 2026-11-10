@@ -1,6 +1,6 @@
 // The public pages, and the pages for people who aren't signed in yet.
 (function () {
-  var $ = App.$, $$ = App.$$, esc = App.esc, state = App.state, icon = App.icon, page = App.page, avatar = App.avatar, tags = App.tags, roleLine = App.roleLine, toast = App.toast, go = App.go, loading = App.loading, errorBlock = App.errorBlock, setBusy = App.setBusy, wireRetry = App.wireRetry, clearErrors = App.clearErrors, showErrors = App.showErrors, longDate = App.longDate, signInBlock = App.signInBlock, openSheet = App.openSheet, TIER_LABEL = Core.TIER_LABEL, cohortLabel = Core.cohortLabel;
+  var $ = App.$, $$ = App.$$, esc = App.esc, state = App.state, page = App.page, avatar = App.avatar, toast = App.toast, go = App.go, setBusy = App.setBusy, clearErrors = App.clearErrors, showErrors = App.showErrors, longDate = App.longDate, signInBlock = App.signInBlock;
 
   var info = function () { return state.publicInfo || {}; };
 

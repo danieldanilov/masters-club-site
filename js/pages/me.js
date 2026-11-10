@@ -1,6 +1,6 @@
 // My profile: what others see, the photo, and the choices about being shown.
 (function () {
-  var $ = App.$, $$ = App.$$, esc = App.esc, state = App.state, icon = App.icon, page = App.page, avatar = App.avatar, tags = App.tags, roleLine = App.roleLine, toast = App.toast, go = App.go, loading = App.loading, errorBlock = App.errorBlock, setBusy = App.setBusy, wireRetry = App.wireRetry, clearErrors = App.clearErrors, showErrors = App.showErrors, longDate = App.longDate, signInBlock = App.signInBlock, openSheet = App.openSheet, TIER_LABEL = Core.TIER_LABEL, cohortLabel = Core.cohortLabel;
+  var $ = App.$, esc = App.esc, state = App.state, page = App.page, toast = App.toast, go = App.go, setBusy = App.setBusy, clearErrors = App.clearErrors, showErrors = App.showErrors, cohortLabel = Core.cohortLabel;
 
   function pageMe() {
     var u = state.me;
