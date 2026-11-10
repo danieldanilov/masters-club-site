@@ -1,9 +1,13 @@
 // Analytics, all in one place: the rest of the site calls Analytics.track(), identify(), reset(),
 // error() and flag(), and only this file knows it's PostHog. It's off unless CONFIG has a PostHog
-// key and this is the live site, so the dev server and every test send nothing.
+// key and this is the live site or staging, so the dev server and every test send nothing. Staging
+// has its own PostHog project, and stays off while its key is empty (docs/07-setup.md).
 // What's tracked and how to add an event: docs/02-architecture.md, "Analytics".
 var Analytics = (function () {
-  var on = !!(typeof CONFIG !== 'undefined' && CONFIG.POSTHOG_KEY && CONFIG.ENV === 'production');
+  var on = !!(typeof CONFIG !== 'undefined' && CONFIG.POSTHOG_KEY && (CONFIG.ENV === 'production' || CONFIG.ENV === 'staging'));
+  // The flag override's key, with the environment's prefix like every stored key (F92).
+  var PREFIX = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_PREFIX) || '';
+  var FLAGS_KEY = PREFIX + 'mc-flags-v1';
 
   /* ---------- keeping personal details out of events ---------- */
 
@@ -123,13 +127,14 @@ var Analytics = (function () {
 
     // A feature flag: true, false, or a variant name. Until PostHog's flags arrive it's false, so
     // a flagged thing starts hidden and never flashes in for someone it's off for. Off the live
-    // site every flag is off, unless localStorage 'mc-flags-v1' turns it on for local work and
-    // the tests: {"portal-board": true}. The live site ignores that key.
+    // site every flag is off, unless the override in localStorage (FLAGS_KEY: mc-flags-v1, or
+    // stg-mc-flags-v1 on staging) turns it on for local work and the tests: {"portal-board": true}.
+    // The live site ignores it.
     // onFlags runs once flags have loaded, and again whenever they change.
     flag: function (key) {
       if (ph()) return posthog.getFeatureFlag(key) || false;
       if (typeof CONFIG !== 'undefined' && CONFIG.ENV === 'production') return false;
-      try { return JSON.parse(localStorage.getItem('mc-flags-v1') || '{}')[key] || false; } catch (e) { return false; }
+      try { return JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}')[key] || false; } catch (e) { return false; }
     },
     onFlags: function (fn) {
       if (ph()) posthog.onFeatureFlags(fn); else fn([]);

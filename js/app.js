@@ -132,10 +132,12 @@ var App = (function () {
 
   // Member data is kept in this browser so pages open at once, even when the API is slow. Signing
   // out or losing the session wipes it. Photos are saved separately so they're fetched only once.
-  var BOOT_KEY = 'mc-boot-v1';
-  var PHOTOS_KEY = 'mc-photos-v1';
-  var PUBLIC_KEY = 'mc-public-v1';
-  var INTENDED_KEY = 'mc-intended-v1';
+  // Every key starts with the environment's prefix, so staging and the live site keep apart (F92).
+  var PREFIX = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_PREFIX) || '';
+  var BOOT_KEY = PREFIX + 'mc-boot-v1';
+  var PHOTOS_KEY = PREFIX + 'mc-photos-v1';
+  var PUBLIC_KEY = PREFIX + 'mc-public-v1';
+  var INTENDED_KEY = PREFIX + 'mc-intended-v1';
   function readJson(store, key) {
     try { return JSON.parse(window[store].getItem(key) || 'null'); } catch (e) { return null; }
   }
@@ -341,7 +343,7 @@ var App = (function () {
   /* ---------- sign-in by email code ---------- */
 
   // The address a code went to, kept for the tab so the code step survives a reload.
-  var CODE_KEY = 'mc-code-v1';
+  var CODE_KEY = PREFIX + 'mc-code-v1';
   function pendingCode() {
     try {
       var p = JSON.parse(sessionStorage.getItem(CODE_KEY) || 'null');
