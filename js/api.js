@@ -4,7 +4,7 @@ var Api = (function () {
   var SESSION_KEY = 'mc-session-v1';
   var GUEST_KEY = 'mc-guest-v1';
   var onSignedOut = function () {};
-  var READS = { boot: 1, me: 1, directory: 1, photos: 1, publicInfo: 1, eventRoster: 1 };
+  var READS = { boot: 1, me: 1, directory: 1, photos: 1, publicInfo: 1, eventRoster: 1, 'admin.overview': 1 };
   var writes = 0;
 
   function read(store, key) { try { return window[store].getItem(key); } catch (e) { return null; } }

@@ -64,6 +64,18 @@
       }).join('') + '</div>');
   }
 
+  // A partner shows as a card: its logo, whole, on a light tile (or its name set large when there's
+  // no logo yet), then the name, a line about what it does with the club, and its site.
+  function partnerCard(p) {
+    var host = '';
+    try { host = p.url ? new URL(p.url).hostname.replace(/^www\./, '') : ''; } catch (e) { host = ''; }
+    return '<article class="partner-card"><div class="partner-logo">' +
+      (p.logo ? '<img src="' + esc(p.logo) + '" alt="' + esc(p.name) + '" loading="lazy" class="ph-no-capture">' : '<span class="partner-wordmark" dir="auto">' + esc(p.name) + '</span>') +
+      '</div><div class="partner-body"><h3 class="name" dir="auto">' + esc(p.name) + '</h3>' +
+      (p.note ? '<p class="muted" dir="auto">' + esc(p.note) + '</p>' : '') +
+      (host ? '<a class="link" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(host) + '</a>' : '') + '</div></article>';
+  }
+
   function pagePartners() {
     var c = CONTENT;
     var i = info();
@@ -71,16 +83,9 @@
     var size = i.member_count ? '<p class="lead measure" style="margin-top:8px">' + i.member_count + ' members across ' + i.cohort_count + ' cohort' + (i.cohort_count === 1 ? '' : 's') + ' so far, with 40 to 50 more joining every cohort.</p>' : '';
     return page('<h1>Work with the club</h1>' +
       '<p class="lead measure" style="margin-top:16px">' + esc((i.settings && i.settings.partner_intro) || 'We partner slowly and choose companies whose involvement helps our members.') + '</p>' + size +
-      partners.map(function (p) {
-        var inner = (p.logo ? '<img class="avatar" src="' + esc(p.logo) + '" alt="">' : '<div class="avatar">' + esc(p.initial || String(p.name).slice(0, 1)) + '</div>') +
-          '<div><div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.note) + '</div></div>';
-        return p.url ? '<a class="partner-now" href="' + esc(p.url) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="partner-now">' + inner + '</div>';
-      }).join('') +
-      '<div class="tiers">' + c.partnerTiers.map(function (t) {
-        return '<div><h3>' + esc(t.name) + '</h3><div class="price">' + esc(t.price) + '</div><p class="muted" style="margin:0">' + esc(t.detail) + '</p></div>';
-      }).join('') + '</div>' +
-      (c.partnerTiersNote ? '<p class="muted small" style="margin-top:12px">' + esc(c.partnerTiersNote) + '</p>' : '') +
-      '<section class="partner-form"><h2>Talk to us</h2><form class="form-grid" id="inquiry" novalidate>' +
+      (partners.length ? '<section class="partners"><h2>Our partners</h2><div class="partner-grid">' + partners.map(partnerCard).join('') + '</div></section>' : '') +
+      '<div class="partner-deal"><p>' + esc(c.partnerDeal) + '</p><a class="btn gold" href="#/partners" data-to-form>Talk to us</a></div>' +
+      '<section class="partner-form" id="talk"><h2>Talk to us</h2><form class="form-grid" id="inquiry" novalidate>' +
       '<label>Your name<input type="text" name="name" maxlength="60" required autocomplete="name"><span class="field-error" data-err="name"></span></label>' +
       '<label>Company<input type="text" name="company" maxlength="60" required autocomplete="organization"><span class="field-error" data-err="company"></span></label>' +
       '<label>Work email<input type="email" name="email" required autocomplete="email"><span class="field-error" data-err="email"></span></label>' +
@@ -91,6 +96,11 @@
 
   function wirePartners() {
     var f = $('#inquiry');
+    $('[data-to-form]').addEventListener('click', function (e) {
+      e.preventDefault();
+      $('#talk').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      $('input[name=name]', f).focus({ preventScroll: true });
+    });
     f.addEventListener('submit', async function (e) {
       e.preventDefault();
       clearErrors(f);

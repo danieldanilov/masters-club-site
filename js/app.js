@@ -450,7 +450,7 @@ var App = (function () {
     // Signed in, the public pages step back to the footer.
     $('#footLinks').innerHTML = state.me ? [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners'], ['#/join', 'Join']].map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('') : '';
     var html = links.map(function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; }).join('');
-    html += state.me ? '<a href="#/" data-signout>Sign out</a>' : '<a href="#/join" class="btn gold small">Sign up / Log in</a>';
+    html += state.me ? '<a href="#/" data-signout>Sign out</a>' : '<a href="#/join" class="btn gold small">Sign in</a>';
     $('#nav').innerHTML = html;
     var so = $('[data-signout]');
     if (so) so.addEventListener('click', function (e) { e.preventDefault(); signOut(); });

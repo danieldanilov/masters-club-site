@@ -100,10 +100,10 @@
       '<label>Email leaders about new requests and partner messages at <span class="hint">Never shown publicly</span><input type="email" name="notify_email" value="' + esc(set.notify_email || '') + '"><span class="field-error" data-err="notify_email"></span></label>' +
       '<div class="row-actions"><button class="btn gold" type="submit">Save public pages</button></div></form>' +
       '<h3 style="margin-top:36px">Partners on the public page</h3><div id="partnerList"></div>' +
-      '<form class="form-grid" id="partnerForm" novalidate style="max-width:720px;margin-top:16px"><div class="form-row"><label>Name<input type="text" name="name" maxlength="60"><span class="field-error" data-err="name"></span></label>' +
+      '<form class="form-grid" id="partnerForm" novalidate style="max-width:720px;margin-top:16px"><input type="hidden" name="id"><div class="form-row"><label>Name<input type="text" name="name" maxlength="60"><span class="field-error" data-err="name"></span></label>' +
       '<label>Line about them<input type="text" name="note" maxlength="200" dir="auto"><span class="field-error" data-err="note"></span></label></div>' +
       '<div class="form-row"><label>Website<input type="url" name="url" placeholder="https://..."><span class="field-error" data-err="url"></span></label><label>Logo link<input type="url" name="logo" placeholder="https://..."><span class="field-error" data-err="logo"></span></label></div>' +
-      '<div class="row-actions"><button class="btn quiet" type="submit">Add partner</button></div></form>' +
+      '<div class="row-actions"><button class="btn quiet" type="submit" data-partner-save>Add partner</button><button class="link" type="button" data-partner-cancel hidden>Cancel</button></div></form>' +
       '<p class="muted small" style="margin-top:16px">Next meeting on Home comes from the next event marked public. Past meetings come from public events with a recap. Tiers and leader photos live in content.js, see docs/05-operations.md.</p></section>' +
 
       '<section class="admin-section" id="s-log"><h2>Recent activity</h2><div class="log ph-sensitive">' + (data.log.length ? data.log.map(function (l) {
@@ -160,9 +160,16 @@
     });
     function drawPartners(list) {
       $('#partnerList').innerHTML = list.filter(function (p) { return p.active; }).map(function (p) {
-        return '<div class="request" data-partner="' + esc(p.id) + '"><div><span class="who" dir="auto">' + esc(p.name) + '</span> <span class="muted" dir="auto">' + esc(p.note) + '</span></div><div class="row-actions"><button class="btn quiet small" data-unlist>Take off the page</button></div></div>';
+        return '<div class="request" data-partner="' + esc(p.id) + '"><div><span class="who" dir="auto">' + esc(p.name) + '</span> <span class="muted" dir="auto">' + esc(p.note) + '</span></div><div class="row-actions"><button class="btn quiet small" data-edit-partner>Edit</button><button class="btn quiet small" data-unlist>Take off the page</button></div></div>';
       }).join('') || '<p class="muted">None yet.</p>';
       $$('[data-partner]').forEach(function (row) {
+        // Edit loads the partner into the form below, which then saves it instead of adding one.
+        $('[data-edit-partner]', row).addEventListener('click', function () {
+          var p = list.filter(function (x) { return x.id === row.dataset.partner; })[0];
+          ['id', 'name', 'note', 'url', 'logo'].forEach(function (k) { pf.elements[k].value = p[k] || ''; });
+          partnerMode(true);
+          pf.elements.name.focus();
+        });
         $('[data-unlist]', row).addEventListener('click', async function () {
           var p = list.filter(function (x) { return x.id === row.dataset.partner; })[0];
           try {
@@ -175,17 +182,26 @@
         });
       });
     }
-    drawPartners(data.partners);
     var pf = $('#partnerForm');
+    function partnerMode(editing) {
+      $('[data-partner-save]', pf).textContent = editing ? 'Save partner' : 'Add partner';
+      $('[data-partner-cancel]', pf).hidden = !editing;
+      if (!editing) { pf.reset(); pf.elements.id.value = ''; }
+    }
+    $('[data-partner-cancel]', pf).addEventListener('click', function () { clearErrors(pf); partnerMode(false); });
+    drawPartners(data.partners);
     pf.addEventListener('submit', async function (e) {
       e.preventDefault();
       clearErrors(pf);
       var fd = new FormData(pf);
+      var id = fd.get('id');
       try {
-        var r = await Api.call('admin.savePartner', { partner: { name: fd.get('name'), note: fd.get('note'), url: fd.get('url'), logo: fd.get('logo') } });
-        Analytics.track('partner added');
+        var partner = { name: fd.get('name'), note: fd.get('note'), url: fd.get('url'), logo: fd.get('logo') };
+        if (id) partner.id = id;
+        var r = await Api.call('admin.savePartner', { partner: partner });
+        Analytics.track(id ? 'partner edited' : 'partner added');
         drawPartners(r.partners);
-        pf.reset();
+        partnerMode(false);
         toast('Saved');
         App.refreshPublic();
       } catch (err) { showErrors(pf, err); }

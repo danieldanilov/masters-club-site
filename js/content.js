@@ -91,11 +91,5 @@ var CONTENT = {
     { name: 'Playtika', note: 'Hosts meetings 1 and 3 of Cohort 2', initial: 'P' }
   ],
 
-  // Draft tiers, still to be agreed by the leaders.
-  partnerTiersNote: 'Draft tiers, open for discussion.',
-  partnerTiers: [
-    { name: 'Partner', price: '₪10,000', detail: 'Logo on the site and event materials, and a session with the cohort.' },
-    { name: 'Gold partner', price: '₪20,000', detail: 'Everything in Partner, plus hosting a meeting and a members spotlight.' },
-    { name: 'Diamond partner', price: '₪35,000+', detail: 'Everything in Gold for three years, plus a recruiting session.' }
-  ]
+  partnerDeal: "We work out each partnership with each partner, so it's good for them and for our members. Tell us what you have in mind and we'll come back with the details."
 };

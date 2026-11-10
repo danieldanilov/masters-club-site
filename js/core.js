@@ -12,7 +12,7 @@ var Core = (function () {
   var LIMITS = { name: 60, role: 60, company: 60, city: 60, program: 100, bio: 280, tag: 40, tags: 6, note: 280, linkedin: 200, title: 120, place: 120, details: 2000, price: 40, recap: 1000, url: 500, contact: 120 };
   var DEFAULT_RULES = {
     leader: { leader: true, club: true, community: true },
-    club: { leader: true, club: true, community: false },
+    club: { leader: true, club: true, community: true },
     community: { leader: true, club: true, community: true }
   };
   // Sign-in codes sent by email. A code lasts 10 minutes and allows 5 tries. Each address gets
