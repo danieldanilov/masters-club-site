@@ -158,9 +158,12 @@
   // The address and code leave the address bar at once, so they stay out of history (F104).
   var linkCode = null;
   function pageSignIn(params) {
-    if (params.get('e') && params.get('c')) {
-      linkCode = { email: Core.normalizeEmail(params.get('e')), code: String(params.get('c')) };
-      history.replaceState(null, '', location.pathname + location.search + '#/signin');
+    // The link puts them after a # (signin#e=...&c=...), so they never reach a server's logs;
+    // a link from before the change has them in the query.
+    var got = location.hash.charAt(1) === 'e' ? new URLSearchParams(location.hash.slice(1)) : params;
+    if (got.get('e') && got.get('c')) {
+      linkCode = { email: Core.normalizeEmail(got.get('e')), code: String(got.get('c')) };
+      history.replaceState(null, '', App.toPath('#/signin'));
     }
     if (!linkCode) { go('#/join'); return ''; }
     return page('<div class="panel"><div class="inner"><h1>Sign in to the club</h1>' +

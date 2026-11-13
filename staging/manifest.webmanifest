@@ -1,7 +1,7 @@
 {
   "name": "The Masters Club",
   "short_name": "Masters Club",
-  "start_url": "./#/members",
+  "start_url": "./members",
   "display": "standalone",
   "background_color": "#0e1e3d",
   "theme_color": "#0e1e3d",

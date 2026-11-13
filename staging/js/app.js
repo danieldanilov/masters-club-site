@@ -73,8 +73,44 @@ var App = (function () {
     clearTimeout(toast.timer);
     toast.timer = setTimeout(function () { t.classList.remove('show'); }, 2600);
   }
+  /* ---------- addresses ---------- */
+
+  // Pages have plain addresses (/meetings?m=x) under the site's base: / live, /staging/ on
+  // staging, from the <base> tag the build writes. Inside the code a page is still named
+  // '#/meetings?m=x', the same as App.route uses, and these turn one into the other (F108).
+  var BASE = new URL(document.baseURI).pathname;
+  function toPath(route) {
+    return BASE + String(route).replace(/^#\//, '');
+  }
+  function currentRoute() {
+    var p = location.pathname.indexOf(BASE) === 0 ? location.pathname.slice(BASE.length) : '';
+    return '#/' + p.replace(/(^|\/)index\.html$/, '').replace(/\/$/, '') + location.search;
+  }
+  // An old link (#/meetings) or one from an email sent before the change moves to its plain address.
+  function adoptOldLink() {
+    if (location.hash.indexOf('#/') === 0) history.replaceState(null, '', toPath(location.hash));
+  }
+  // Every #/ link the pages write becomes a plain one, whenever it's drawn.
+  function plainLinks(root) {
+    $$('a[href^="#/"]', root).forEach(function (a) { a.setAttribute('href', toPath(a.getAttribute('href'))); });
+  }
+  // A click on a link inside the site changes the page without reloading it.
+  function followLink(e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (a.target || a.hasAttribute('download')) return;
+    var url = new URL(a.href, document.baseURI);
+    if (url.origin !== location.origin || url.pathname.indexOf(BASE) !== 0 || /\.[a-z0-9]+$/i.test(url.pathname)) return;
+    e.preventDefault();
+    go('#/' + url.pathname.slice(BASE.length).replace(/\/$/, '') + url.search);
+  }
+
+  // A page that sends people elsewhere while it's being drawn gets the new page after it
+  // finishes, so its own empty draw doesn't land on top.
+  var drawing = false;
   function go(hash) {
-    if (location.hash === hash) render(); else location.hash = hash;
+    if (currentRoute() !== hash) history.pushState(null, '', toPath(hash));
+    if (drawing) Promise.resolve().then(render); else render();
   }
   function loading(text) {
     return '<div class="loading"><div class="spinner"></div>' + esc(text || 'Loading') + '</div>';
@@ -97,7 +133,7 @@ var App = (function () {
   }
   // The address to share for a page, the same one the WhatsApp links use.
   function siteLink(hash) {
-    return location.href.split('#')[0].split('?')[0] + hash;
+    return location.origin + toPath(hash);
   }
   function downloadFile(name, type, text) {
     var url = URL.createObjectURL(new Blob([text], { type: type }));
@@ -452,7 +488,7 @@ var App = (function () {
     $$('[data-retry]').forEach(function (b) { b.addEventListener('click', render); });
   }
   function routeOf() {
-    var parts = (location.hash || '#/').split('?');
+    var parts = currentRoute().split('?');
     return { route: parts[0], params: new URLSearchParams(parts[1] || '') };
   }
 
@@ -492,7 +528,7 @@ var App = (function () {
     var app = $('#app');
     if (r.member && !state.me) {
       // A link from WhatsApp opens the right page after sign-in. The plain directory is the default anyway.
-      if (location.hash !== '#/members') writeJson('sessionStorage', INTENDED_KEY, location.hash);
+      if (currentRoute() !== '#/members') writeJson('sessionStorage', INTENDED_KEY, currentRoute());
       var asking = Api.guest() && state.guest;
       app.innerHTML = asking ? routes['#/request'].page(at.params) : routes['#/join'].page(new URLSearchParams(), { gated: true });
       var shown = routes[asking ? '#/request' : '#/join'];
@@ -516,7 +552,8 @@ var App = (function () {
         wireRetry();
       };
       try {
-        app.innerHTML = r.page(at.params);
+        drawing = true;
+        try { app.innerHTML = r.page(at.params); } finally { drawing = false; }
         var wired = r.wire ? r.wire(at.params) : null;
         if (wired && typeof wired.then === 'function') wired.catch(failed);
         if (wired === 'keep-scroll') { mountSignIn(); return; }
@@ -539,7 +576,12 @@ var App = (function () {
 
   function start() {
     $('#menuBtn').addEventListener('click', function () { setMenu(!$('#nav').classList.contains('open')); });
-    window.addEventListener('hashchange', render);
+    adoptOldLink();
+    plainLinks(document);
+    new MutationObserver(function () { plainLinks(document); }).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('click', followLink);
+    window.addEventListener('popstate', render);
+    window.addEventListener('hashchange', function () { if (location.hash.indexOf('#/') === 0) { adoptOldLink(); render(); } });
     if (CONFIG.ENV !== 'production') $('#envNote').textContent = CONFIG.ENV + ' build with test data';
     if (!state.publicInfo) state.publicInfo = readJson('localStorage', PUBLIC_KEY);
     refreshPublic();
@@ -569,6 +611,6 @@ var App = (function () {
     $: $, $$: $$, esc: esc, state: state, icon: icon, page: page, avatar: avatar, tags: tags, roleLine: roleLine, toast: toast, go: go, loading: loading,
     errorBlock: errorBlock, setBusy: setBusy, wireRetry: wireRetry, clearErrors: clearErrors, showErrors: showErrors, longDate: longDate, signInBlock: signInBlock, signInWithCode: signInWithCode, forgetCode: function () { setPendingCode(null); },
     openSheet: openSheet, closeSheet: closeSheet, route: route, render: render, refresh: refresh, refreshPublic: refreshPublic, replaceItem: replaceItem, saveData: saveData,
-    siteLink: siteLink, copyText: copyText, downloadFile: downloadFile, photoCache: photoCache, writeJson: writeJson, PHOTOS_KEY: PHOTOS_KEY, fetchPhotos: fetchPhotos, start: start
+    siteLink: siteLink, toPath: toPath, copyText: copyText, downloadFile: downloadFile, photoCache: photoCache, writeJson: writeJson, PHOTOS_KEY: PHOTOS_KEY, fetchPhotos: fetchPhotos, start: start
   };
 })();

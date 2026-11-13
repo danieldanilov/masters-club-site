@@ -21,8 +21,8 @@ var Analytics = (function () {
   // Properties autocapture fills from what was clicked.
   var TEXT_KEYS = ['$el_text', '$elements_chain'];
 
-  // The code in a sign-in link (#/signin?e=...&c=123456) is as good as a password for 10 minutes.
-  function cleanUrl(s) { return String(s).replace(EMAIL, '[email]').replace(/([?&]c=)\d+/g, '$1[code]'); }
+  // The code in a sign-in link (/signin#e=...&c=123456) is as good as a password for 10 minutes.
+  function cleanUrl(s) { return String(s).replace(EMAIL, '[email]').replace(/([?&#]c=)\d+/g, '$1[code]'); }
   function cleanText(s) { return cleanUrl(s).replace(PHONE, longNumber); }
 
   function cleanProps(props, keys, fn) {
@@ -30,11 +30,17 @@ var Analytics = (function () {
     keys.forEach(function (k) { if (typeof props[k] === 'string') props[k] = fn(props[k]); });
   }
 
-  // The hash route, like #/event, without its query. Every event carries it, so insights can
-  // break down by page even though the site is one address.
+  // The page, named like #/event without its query, as it was before addresses dropped the #.
+  // Every event carries it, so insights can break down by page across the change (F108).
+  var BASE = (typeof document !== 'undefined' && document.baseURI) ? new URL(document.baseURI).pathname : '/';
   function routeOf(url) {
-    var hash = String(url || '').split('#')[1];
-    return hash ? '#' + hash.split('?')[0] : '#/';
+    var s = String(url || '');
+    var hash = s.split('#')[1];
+    if (hash && hash.charAt(0) === '/') return '#' + hash.split('?')[0];
+    var p;
+    try { p = new URL(s).pathname; } catch (e) { return '#/'; }
+    if (p.indexOf(BASE) === 0) p = p.slice(BASE.length);
+    return '#/' + p.replace(/\/$/, '');
   }
 
   // Runs on every event just before it leaves the browser.
@@ -68,7 +74,7 @@ var Analytics = (function () {
     defaults: '2026-08-30',
     // Only signed-in members get a person profile; visitors stay anonymous.
     person_profiles: 'identified_only',
-    // The site routes on the hash (#/members), so a pageview is one hash change. These defaults
+    // A pageview is one change of address, path or (for old links) hash. These defaults
     // strip hashes from URLs, so that's turned back off; scrub() cleans what the hash carries.
     capture_pageview: { path: true, hash: true },
     disable_capture_url_hashes: false,
