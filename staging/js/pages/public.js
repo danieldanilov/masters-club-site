@@ -173,7 +173,7 @@
 
   function emailStep(flow) {
     flow.innerHTML = '<h2>Sign in or apply</h2>' +
-      '<p class="muted">Members get a sign-in code. Everyone else gets the application form.</p>' +
+      '<p class="muted small">Members get a sign-in code. Everyone else gets the application form.</p>' +
       '<form class="code-form" id="emailForm" novalidate>' +
       '<label>Your email<input type="email" name="email" autocomplete="email" required placeholder="you@example.com"><span class="field-error" data-err="email"></span></label>' +
       '<button class="btn navy" type="submit">Continue</button></form>';
@@ -215,14 +215,14 @@
     var open = s.applications_open !== false;
     var minutes = Math.round(Core.CODE_LIMITS.ttlMs / 60000);
     flow.innerHTML = '<h2>Check your email</h2>' +
-      '<p class="muted">Masters, type the code we sent to <b class="ph-sensitive">' + esc(email) + '</b>. It works for ' + minutes + ' minutes. <button class="link" type="button" data-change>Change email</button></p>' +
+      '<p class="muted small">We emailed your code to <b class="ph-sensitive">' + esc(email) + '</b> (<button class="link" type="button" data-change>change email</button>). It works for ' + minutes + ' minutes.</p>' +
       '<form class="code-form" id="codeForm" novalidate>' +
       '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
       '<button class="btn gold" type="submit">Sign in</button>' +
       '<button class="btn quiet" type="button" data-resend disabled>Send a new code</button>' +
       '<p class="field-error" data-resend-note role="status"></p></form>' +
       '<div class="join-apply">' + (open
-        ? '<p>Not a member? <a class="link" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application now</a></p><p class="muted small">You\'ll get it by email too.</p>'
+        ? '<p>Not a member? <a class="link" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application now</a></p>'
         : '<p>Not a member? Applications are closed right now.</p>') + '</div>';
     var apply = $('[data-apply]', flow);
     if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked', { source: 'join' }); });
