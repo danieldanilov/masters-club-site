@@ -14,10 +14,11 @@ var Api = (function () {
     try { if (value) window[store].setItem(key, value); else window[store].removeItem(key); } catch (e) { /* private mode */ }
   }
 
-  function ApiError(code, message, fields) {
+  function ApiError(code, message, fields, retryAfter) {
     this.code = code;
     this.message = message;
     this.fields = fields || {};
+    this.retryAfter = retryAfter || 0;
   }
 
   async function call(action, body, opts) {
@@ -39,7 +40,7 @@ var Api = (function () {
     var data;
     try { data = await res.json(); } catch (e) { throw new ApiError('server', 'The server sent something unexpected. Try again in a minute.'); }
     if (!data.ok) {
-      var err = new ApiError(data.error.code, data.error.message, data.error.fields);
+      var err = new ApiError(data.error.code, data.error.message, data.error.fields, data.error.retryAfter);
       if (err.code === 'unauthorized') {
         write('localStorage', SESSION_KEY, null);
         onSignedOut(err);

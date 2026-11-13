@@ -300,10 +300,11 @@ var App = (function () {
       return p && Date.now() - p.at < Core.CODE_LIMITS.ttlMs ? p : null;
     } catch (e) { return null; }
   }
-  // n counts the emails sent to that address, so the page knows the next wait (F110).
-  function setPendingCode(email, n) {
+  // n counts the emails sent to that address, so the page knows the next wait (F110); readyAt,
+  // when the API said exactly when a new one can go, overrides it.
+  function setPendingCode(email, n, readyAt) {
     try {
-      if (email) sessionStorage.setItem(CODE_KEY, JSON.stringify({ email: email, at: Date.now(), n: n || 1 }));
+      if (email) sessionStorage.setItem(CODE_KEY, JSON.stringify({ email: email, at: Date.now(), n: n || 1, readyAt: readyAt || 0 }));
       else sessionStorage.removeItem(CODE_KEY);
     } catch (e) { /* private mode */ }
   }

@@ -197,7 +197,7 @@
         // and say when a new one can be sent.
         if (err.code === 'limited') {
           Analytics.identify({ id: email, email: email });
-          if (!App.pendingCode()) App.setPendingCode(email, Core.CODE_LIMITS.waitsMs.length);
+          App.setPendingCode(email, 1, Date.now() + err.retryAfter * 1000);
           checkStep(flow, email, err.message);
           return;
         }
@@ -257,7 +257,8 @@
     var tick = function () {
       if (!btn.isConnected) return;
       var p = App.pendingCode() || { at: Date.now(), n: 1 };
-      var left = Math.ceil((p.at + waits[Math.min(p.n, waits.length) - 1] - Date.now()) / 1000);
+      var ready = p.readyAt || p.at + waits[Math.min(p.n, waits.length) - 1];
+      var left = Math.ceil((ready - Date.now()) / 1000);
       btn.disabled = left > 0;
       btn.textContent = left > 0 ? 'Send a new code in ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Send a new code';
       if (left > 0) setTimeout(tick, 1000);
@@ -273,6 +274,7 @@
         toast('New code sent');
       } catch (err) {
         note.textContent = err.message;
+        if (err.retryAfter) App.setPendingCode(email, p.n, Date.now() + err.retryAfter * 1000);
       }
       setBusy(btn, false);
       tick();
