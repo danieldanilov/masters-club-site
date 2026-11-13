@@ -11,7 +11,7 @@
       (first ? '<p class="lead measure" style="margin-top:-8px">' + (u.hasProfile ? 'We filled this in from your application. Fix anything that\'s off, and save.' : 'This is how other members find you. It takes a minute, and you can change it any time.') + ' <a class="link" href="#/members">Skip for now</a></p>' : '') +
       '<div class="two" style="margin-top:28px"><form class="form-grid cols" id="profileForm" novalidate>' +
       '<div class="photo-row"><span id="myPhoto">' + App.avatar(u, 'lg') + '</span><div class="row-actions"><label class="btn quiet small file-btn">' + (p.photo ? 'Change photo' : 'Add a photo') + '<input type="file" accept="image/*" aria-label="Choose a photo" class="ph-no-capture"></label>' +
-      (p.photo ? '<button class="link" type="button" id="removePhoto">Remove photo</button>' : '') + '<span class="muted small">Google sign-in brings your Google photo.</span></div></div>' +
+      (p.photo ? '<button class="link" type="button" id="removePhoto">Remove photo</button>' : '') + '</div></div>' +
       '<label>Name<input type="text" name="name" value="' + esc(u.name) + '" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +
       '<label>Role<input type="text" name="role" value="' + esc(p.role) + '" maxlength="60" dir="auto" placeholder="Product Manager"><span class="field-error" data-err="role"></span></label>' +
       '<label>Company<input type="text" name="company" value="' + esc(p.company) + '" maxlength="60" dir="auto" placeholder="Where you work now"><span class="field-error" data-err="company"></span></label>' +
