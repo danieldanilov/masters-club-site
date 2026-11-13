@@ -13,7 +13,6 @@ var App = (function () {
     data: null,        // {directory, events, posts, pending, today} from boot, or the saved copy
     dir: { q: '', cohort: '', industry: '', open: [], tier: '' },
     board: { q: '', kind: '' },
-    guest: null,       // {email, name, request} after an unknown sign-in
     publicInfo: null   // live data for the public pages
   };
   var routes = {};
@@ -267,68 +266,28 @@ var App = (function () {
 
   /* ---------- sign-in ---------- */
 
-  // Signing in asks only for an email: a link and a code arrive in one email, and either signs
-  // you in. The dev server also offers a one-click stand-in, which the browser tests use.
-  function signInBlock() {
-    return '<div class="signin">' + (CONFIG.DEV_SIGNIN ? '<div class="dev-slot"></div>' : '') + '<div class="code-slot"></div></div>';
-  }
-
-  // Fills every sign-in block on the page.
-  function mountSignIn() {
-    $$('.code-slot').forEach(mountCode);
-    $$('.dev-slot').forEach(function (slot) {
-      slot.innerHTML = '<form class="dev-signin" data-dev-signin><input type="email" name="email" placeholder="Test email" required aria-label="Test email">' +
-        '<button class="btn navy" type="submit">Sign in (dev)</button></form>';
-      $('form', slot).addEventListener('submit', function (e) {
-        e.preventDefault();
-        handleCredential(devToken(new FormData(e.target).get('email')));
-      });
-    });
-  }
-
-  // Dev only: a fake Google token the dev server's fake Google accepts. The live API checks
-  // every token with Google, which rejects these.
-  function devToken(email) {
-    var claims = { email: email, aud: CONFIG.GOOGLE_CLIENT_ID, iss: 'https://accounts.google.com', email_verified: 'true', exp: String(Math.floor(Date.now() / 1000) + 3600), name: email.split('@')[0] };
-    var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(claims)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    return 'fake.' + b64;
-  }
-
-  async function handleCredential(credential) {
-    $('#app').innerHTML = loading('Signing you in');
-    try {
-      await signedIn(await Api.call('signIn', { credential: credential }, { session: '' }), 'dev');
-    } catch (e) {
-      $('#app').innerHTML = errorBlock(e);
-      wireRetry();
-    }
-  }
-
-  // Where a sign-in lands: the link they came for, a first look at their profile, or the
-  // directory. Inactive and unknown people go to their own pages.
+  // Where a sign-in lands: the link they came for, a first look at their profile, or the directory.
   async function signedIn(r, method) {
     setPendingCode(null);
-    if (r.status === 'member') {
-      clearSaved();
-      Api.setSession(r.session);
-      Api.setGuest(null);
-      take(r);
-      Analytics.track('signed in', { method: method, first_time: !!r.me.first });
-      // Photos follow on their own, so the page isn't held up waiting for them.
-      fetchPhotos().then(function (got) { if (got) notifyPage(); });
-      toast('Welcome, ' + r.me.name.split(' ')[0]);
-      var intended = readJson('sessionStorage', INTENDED_KEY);
-      writeJson('sessionStorage', INTENDED_KEY, null);
-      go(intended || (r.me.first ? 'me' : 'members'));
-    } else if (r.status === 'inactive') {
-      Analytics.track('sign in failed', { method: method, reason: 'inactive' });
-      go('denied?e=' + encodeURIComponent(r.email));
-    } else {
-      Analytics.track('sign in failed', { method: method, reason: 'not_on_list' });
-      Api.setGuest(r.guest);
-      state.guest = { email: r.email, name: r.name, request: r.request };
-      go('request');
-    }
+    clearSaved();
+    Api.setSession(r.session);
+    take(r);
+    Analytics.track('signed in', { method: method, first_time: !!r.me.first });
+    // Photos follow on their own, so the page isn't held up waiting for them.
+    fetchPhotos().then(function (got) { if (got) notifyPage(); });
+    toast('Welcome, ' + r.me.name.split(' ')[0]);
+    var intended = readJson('sessionStorage', INTENDED_KEY);
+    writeJson('sessionStorage', INTENDED_KEY, null);
+    go(intended || (r.me.first ? 'me' : 'members'));
+  }
+
+  // The dev server's one-click sign-in for the browser tests: it hands back the same answer a
+  // code would. The live site has no such address.
+  async function devSignIn(email) {
+    var res = await fetch('/__signin', { method: 'POST', body: JSON.stringify({ email: email }) });
+    var data = await res.json();
+    if (!data.ok) throw new Api.ApiError(data.error.code, data.error.message);
+    return signedIn(data, 'dev');
   }
 
   /* ---------- sign-in by email code ---------- */
@@ -348,73 +307,16 @@ var App = (function () {
     } catch (e) { /* private mode */ }
   }
 
-  function mountCode(slot) {
-    var p = pendingCode();
-    if (p) return codeStep(slot, p.email);
-    slot.innerHTML = '<form class="code-form" novalidate>' +
-      '<label>Your email<input type="email" name="email" autocomplete="email" required placeholder="you@example.com"><span class="field-error" data-err="email"></span></label>' +
-      '<button class="btn navy" type="submit">Email me a sign-in link</button></form>';
-    var f = $('form', slot);
-    f.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      var btn = $('button[type=submit]', f);
-      var email = Core.normalizeEmail(new FormData(f).get('email'));
-      clearErrors(f);
-      setBusy(btn, true, 'Sending…');
-      try {
-        await Api.call('emailStart', { email: email }, { session: '' });
-        Analytics.track('sign in code sent', { resend: false });
-        setPendingCode(email);
-        codeStep(slot, email);
-        $('input[name=code]', slot).focus();
-      } catch (err) {
-        Analytics.track('sign in failed', { method: 'email', reason: err.code });
-        setBusy(btn, false);
-        showErrors(f, err);
-      }
-    });
-  }
-
-  function codeStep(slot, email) {
-    slot.innerHTML = '<form class="code-form" novalidate>' +
-      '<p class="small" style="margin:0">We sent a sign-in link to <b class="ph-sensitive">' + esc(email) + '</b>. Open it on any device, or type the 6-digit code from the same email here. Both work for 10 minutes. If it isn\'t there, check spam.</p>' +
-      '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
-      '<button class="btn gold" type="submit">Sign in</button>' +
-      '<div class="code-links"><button class="link" type="button" data-resend>Send a new link</button><button class="link" type="button" data-change>Use another email</button></div></form>';
-    var f = $('form', slot);
-    f.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      var btn = $('button[type=submit]', f);
-      clearErrors(f);
-      setBusy(btn, true, 'Checking…');
-      try {
-        await signInWithCode(email, new FormData(f).get('code'), 'email');
-      } catch (err) {
-        Analytics.track('sign in failed', { method: 'email', reason: err.code });
-        setBusy(btn, false);
-        showErrors(f, err);
-      }
-    });
-    $('[data-resend]', f).addEventListener('click', async function () {
-      clearErrors(f);
-      try {
-        await Api.call('emailStart', { email: email }, { session: '' });
-        Analytics.track('sign in code sent', { resend: true });
-        setPendingCode(email);
-        toast('New link sent');
-      } catch (err) {
-        showErrors(f, err);
-      }
-    });
-    $('[data-change]', f).addEventListener('click', function () {
-      setPendingCode(null);
-      mountCode(slot);
-    });
-  }
-
   // The one way a code becomes a session, typed or from the link in the email.
   async function signInWithCode(email, code, method) {
-    return signedIn(await Api.call('emailVerify', { email: email, code: code }, { session: '' }), method);
+    var r;
+    try {
+      r = await Api.call('emailVerify', { email: email, code: code }, { session: '' });
+    } catch (err) {
+      Analytics.track('sign in failed', { method: method, reason: err.code });
+      throw err;
+    }
+    return signedIn(r, method);
   }
 
   function signOut() {
@@ -422,9 +324,7 @@ var App = (function () {
     Analytics.track('signed out');
     Analytics.reset();
     Api.setSession(null);
-    Api.setGuest(null);
     clearSaved();
-    state.guest = null;
     setPendingCode(null);
     toast('Signed out');
     go('');
@@ -524,10 +424,8 @@ var App = (function () {
     if (r.member && !state.me) {
       // A link from WhatsApp opens the right page after sign-in. The plain directory is the default anyway.
       if (currentRoute() !== 'members') writeJson('sessionStorage', INTENDED_KEY, currentRoute());
-      var asking = Api.guest() && state.guest;
-      app.innerHTML = asking ? routes['request'].page(at.params) : routes['join'].page(new URLSearchParams(), { gated: true });
-      var shown = routes[asking ? 'request' : 'join'];
-      if (shown.wire) shown.wire(at.params);
+      app.innerHTML = routes['join'].page(new URLSearchParams(), { gated: true });
+      routes['join'].wire(at.params);
     } else if (r.member && !state.data) {
       app.innerHTML = loading('Opening the club');
       refresh().then(render, function (e) {
@@ -551,14 +449,13 @@ var App = (function () {
         try { app.innerHTML = r.page(at.params); } finally { drawing = false; }
         var wired = r.wire ? r.wire(at.params) : null;
         if (wired && typeof wired.then === 'function') wired.catch(failed);
-        if (wired === 'keep-scroll') { mountSignIn(); return; }
+        if (wired === 'keep-scroll') return;
       } catch (e) {
         failed(e);
         return;
       }
     }
     drawFailed = false;
-    mountSignIn();
     window.scrollTo(0, 0);
   }
 
@@ -600,7 +497,7 @@ var App = (function () {
 
   return {
     $: $, $$: $$, esc: esc, state: state, icon: icon, page: page, avatar: avatar, tags: tags, roleLine: roleLine, toast: toast, go: go, loading: loading,
-    errorBlock: errorBlock, setBusy: setBusy, wireRetry: wireRetry, clearErrors: clearErrors, showErrors: showErrors, longDate: longDate, signInBlock: signInBlock, signInWithCode: signInWithCode, forgetCode: function () { setPendingCode(null); },
+    errorBlock: errorBlock, setBusy: setBusy, wireRetry: wireRetry, clearErrors: clearErrors, showErrors: showErrors, longDate: longDate, signInWithCode: signInWithCode, pendingCode: pendingCode, setPendingCode: setPendingCode, devSignIn: devSignIn,
     openSheet: openSheet, closeSheet: closeSheet, route: route, render: render, refresh: refresh, refreshPublic: refreshPublic, replaceItem: replaceItem, saveData: saveData,
     siteLink: siteLink, toPath: toPath, copyText: copyText, downloadFile: downloadFile, photoCache: photoCache, writeJson: writeJson, PHOTOS_KEY: PHOTOS_KEY, fetchPhotos: fetchPhotos, start: start
   };

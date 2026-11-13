@@ -250,10 +250,13 @@ input[type=checkbox] { width: 1.125rem; height: 1.125rem; margin: 0; cursor: poi
 
 /* ---------- the tie as a component (docs/06-design.md, "Components") ---------- */
 
-/* A mist panel wearing the tie as a band across its top: forms, sign-in, side panels. */
-.banded { --pad: 2rem; padding: calc(var(--pad) + 0.75rem) var(--pad) calc(var(--pad) + 0.25rem); background: var(--tie-small) top / 100% 0.75rem no-repeat, var(--mist); border-radius: var(--radius); }
-.banded :is(input[type=text], input[type=email], input[type=url], input[type=tel], input[type=number], textarea, select) { background-color: var(--white); }
-@media (max-width: 480px) { .banded { --pad: 1.25rem; } }
+/* The tie shows once per page (F112), so a page picks the one place it goes.
+   .surface is a mist panel for forms and side content; .banded is the same panel wearing the tie
+   as a band across its top, for the page whose one tie it is. */
+.surface, .banded { --pad: 2rem; padding: calc(var(--pad) + 0.25rem) var(--pad); background: var(--mist); border-radius: var(--radius); }
+.banded { padding-top: calc(var(--pad) + 0.75rem); background: var(--tie-small) top / 100% 0.75rem no-repeat, var(--mist); }
+:is(.surface, .banded) :is(input[type=text], input[type=email], input[type=url], input[type=tel], input[type=number], textarea, select) { background-color: var(--white); }
+@media (max-width: 480px) { .surface, .banded { --pad: 1.25rem; } }
 /* A field of the tie, filling space a page would otherwise leave empty. Never carries content. */
 .tie-field { background: var(--tie); border-radius: var(--radius); min-height: 6rem; }
 
@@ -302,44 +305,26 @@ input[type=checkbox] { width: 1.125rem; height: 1.125rem; margin: 0; cursor: poi
 .partner-body { padding: 1.25rem 1.5rem 1.5rem; }
 .partner-body .name { font-family: var(--display); font-size: 1.375rem; font-weight: 500; margin: 0 0 0.375rem; }
 .partner-body .muted { margin: 0 0 0.75rem; }
-/* The invitation: the same card, with the tie where a logo would be. */
+/* The invitation: the same card, navy where a logo would be. */
 .partner-invite { color: inherit; text-decoration: none; border-top-color: var(--navy); }
-.partner-invite .partner-logo { background: var(--tie); border-bottom: 0; }
+.partner-invite .partner-logo { background: var(--navy); border-bottom: 0; }
 .partner-invite .partner-wordmark { background: var(--navy); color: var(--white); padding: 0.5rem 1rem; border-radius: var(--radius); box-shadow: 0 0 0 0.625rem var(--navy); font-size: clamp(1.25rem, 1rem + 0.8vw, 1.625rem); }
 @media (prefers-reduced-motion: reduce) { .partner-card, .partner-card:hover { transition: none; transform: none; } }
 
 /* ---------- join ---------- */
 
-/* Applying is a navy panel that ends in the tie; signing in is a banded card beside it. */
-.paths { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; margin-top: 2rem; }
-@media (min-width: 900px) { .paths { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); align-items: stretch; } }
-.paths h2 { font-size: 1.9rem; margin-bottom: 0.75rem; }
-.paths p { max-width: var(--measure); }
-.path-apply { display: flex; flex-direction: column; background: var(--navy); color: var(--white); border-radius: var(--radius); overflow: hidden; }
-.path-apply .path-body { padding: 2.25rem 2.25rem 2rem; }
-.path-apply .muted { color: var(--on-navy); }
-.path-apply .tie-field { flex: 1 0 6rem; border-radius: 0; }
-.path-gets { margin: 2rem 0 0; padding-top: 1.5rem; border-top: 1px solid var(--navy-3); display: grid; gap: 1.25rem; }
-.path-gets dt { font-family: var(--display); font-size: 1.25rem; color: var(--white); margin-bottom: 0.25rem; }
-.path-gets dd { margin: 0; color: var(--on-navy); max-width: var(--measure); }
-@media (max-width: 899px) {
-  /* Members sign in far more often than people apply, so on a phone that comes first. */
-  .paths .path-signin { order: -1; }
-  .paths.apply-first .path-signin { order: 0; }
-}
-@media (max-width: 480px) { .path-apply .path-body { padding: 1.75rem 1.25rem 1.75rem; } }
-/* Beside the taller apply panel, the sign-in card's few lines sit in its middle, not at the top
-   of an empty card. */
-@media (min-width: 900px) { .path-signin { display: flex; flex-direction: column; justify-content: center; } }
-.gate { margin: 0 0 1.25rem; }
-
-/* The sign-in panel on Denied and Request wears the tie as a band. */
-.panel { max-width: 35rem; background: var(--mist); border-radius: var(--radius); overflow: hidden; }
-.panel::before { content: ""; display: block; height: 0.75rem; background: var(--tie-small); }
-.panel .inner { padding: 2rem 2rem 2.25rem; }
-.panel h1 { margin-bottom: 0.625rem; }
-/* One field and one button, the card's full width at every size. */
-.signin { display: grid; gap: 1rem; margin-top: 1.5rem; width: 100%; }
+/* One card in the middle of the page, the page's one tie across its top: Join and the sign-in
+   link's landing page. */
+.join { max-width: 34rem; margin: 2.5rem auto 0; }
+.join h1 { margin-bottom: 0.75rem; }
+.join h2 { font-size: 1.5rem; margin: 0; }
+.join .code-form { margin-top: 1.25rem; }
+.join-more { display: grid; gap: 0.5rem; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid #cfd8e6; }
+.join-more p { margin: 0; }
+.join .muted.small .link { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.join-more .form-grid { margin-top: 0.75rem; }
+.join > .muted.small, #joinFlow > .muted.small { margin: 1.25rem 0 0; }
+.gate { max-width: 34rem; margin: 0 auto 1.25rem; }
 .dev-signin { display: grid; gap: 0.5rem; }
 .dev-signin input { background-color: var(--white); }
 .code-form { display: grid; gap: 0.75rem; }

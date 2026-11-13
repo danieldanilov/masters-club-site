@@ -34,8 +34,7 @@
     var requestsHtml = pending.length ? pending.map(function (r) {
       var guess = bestMatch(r.name, data.members);
       // Linking gives them that member's account, so it's always a choice, never the default.
-      var google = r.google_name && r.google_name !== r.name ? '<div class="muted small ph-sensitive" dir="auto">Google calls them ' + esc(r.google_name) + '</div>' : '';
-      return '<div class="request" data-request="' + esc(r.id) + '"><div><span class="who" dir="auto">' + esc(r.name) + '</span> <span class="muted ph-sensitive">' + esc(r.email) + '</span>' + google +
+      return '<div class="request" data-request="' + esc(r.id) + '"><div><span class="who" dir="auto">' + esc(r.name) + '</span> <span class="muted ph-sensitive">' + esc(r.email) + '</span>' +
         (r.note ? '<div class="muted small ph-sensitive" dir="auto">"' + esc(r.note) + '"</div>' : '') + '</div>' +
         '<div class="row-actions"><select data-link aria-label="Link to"><option value="">Add as a new member</option>' +
         data.members.map(function (m) { return '<option value="' + esc(m.id) + '">Link to ' + esc(m.name) + (m.cohort ? ', ' + esc(cohortLabel(m.cohort)) : '') + (guess && guess.id === m.id ? ' (name matches)' : '') + '</option>'; }).join('') +
