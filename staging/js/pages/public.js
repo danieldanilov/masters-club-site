@@ -36,11 +36,11 @@
       '</div>';
   }
 
-  // Why the club exists beside a field of the tie, then the people who run it as large square photos.
+  // Why the club exists, in a navy panel wearing the page's band, then the people who run it as
+  // large square photos.
   function pageAbout() {
-    return page('<section class="about-top"><div class="about-mission"><h1>Why the club exists</h1>' +
-      '<p class="lead measure mission">' + esc(CONTENT.mission) + '</p></div>' +
-      '<div class="tie-field" aria-hidden="true"></div></section>' +
+    return page('<section class="about-top panel navy tied"><h1>Why the club exists</h1>' +
+      '<p class="lead measure">' + esc(CONTENT.mission) + '</p></section>' +
       '<section class="about-people"><h2>Who runs it</h2>' +
       '<p class="lead measure">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
       '<div class="people">' + CONTENT.leaders.map(function (p) {
@@ -52,7 +52,7 @@
     var extra = (info().past_events || []).map(function (e) { return { id: e.id, date: e.date, kind: Core.EVENT_KINDS[e.kind] || '', speaker: e.title, role: e.place, quote: '', recap: e.recap, poster: e.poster, photos: [] }; });
     var list = CONTENT.meetings.concat(extra);
     return page('<h1>Past meetings</h1>' +
-      '<p class="lead measure" style="margin-top:16px">Every meeting opens with food and structured networking, then a talk or workshop with someone worth hearing.</p>' +
+      '<p class="lead measure mt-2">Every meeting opens with food and structured networking, then a talk or workshop with someone worth hearing.</p>' +
       '<div class="meetings">' + list.map(function (m, i) {
         return '<article class="meeting" id="m-' + esc(m.id) + '">' +
           (m.poster ? '<img class="poster" src="' + esc(m.poster) + '" alt="Poster for ' + esc(m.speaker) + '" width="640" height="800"' + (i > 1 ? ' loading="lazy"' : '') + '>' : '') +
@@ -94,9 +94,9 @@
     var i = info();
     var partners = i.partners || c.partners;
     var pitch = (i.settings && i.settings.partner_intro) || c.partnerPitch;
-    return page('<div class="partners-top"><section class="partner-pitch"><h1>Work with the club</h1>' +
+    return page('<div class="partners-top"><section class="partner-pitch panel navy tied"><h1>Work with the club</h1>' +
       '<p class="lead">' + esc(pitch) + '</p><p>' + esc(c.partnerDeal) + '</p></section>' +
-      '<section class="partner-form surface" id="talk"><h2>Talk to us</h2><form class="form-grid" id="inquiry" novalidate>' +
+      '<section class="partner-form panel mist" id="talk"><h2>Talk to us</h2><form class="form-grid" id="inquiry" novalidate>' +
       '<label>Your name<input type="text" name="name" maxlength="60" required autocomplete="name"><span class="field-error" data-err="name"></span></label>' +
       '<label>Company<input type="text" name="company" maxlength="60" required autocomplete="organization"><span class="field-error" data-err="company"></span></label>' +
       '<label>Work email<input type="email" name="email" required autocomplete="email"><span class="field-error" data-err="email"></span></label>' +
@@ -133,7 +133,8 @@
     });
   }
 
-  // The one way in: one card, the club on the left in navy, the form on the right. An email gets
+  // The one way in: one card wearing the page's band, the club on the left in navy, the form on mist
+  // on the right. An email gets
   // a member a sign-in code and anyone else the application form, behind the same screen, so the
   // page never tells who's a member (F109, F113). Members-only pages show it too, with a line why.
   function pageJoin(params, opts) {
@@ -141,12 +142,11 @@
     var gated = opts && opts.gated;
     var s = info().settings || {};
     return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
-      '<section class="join"><div class="join-club"><div class="join-club-body"><h1>Join the club</h1>' +
+      '<section class="join tied"><div class="join-club panel navy"><h1>Join the club</h1>' +
       '<p class="join-lead">Open to Reichman master\'s students.' + (s.applications_note ? ' ' + esc(s.applications_note) : '') + '</p>' +
       (s.applications_open === false ? '<p class="join-lead">Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.</p>' : '') +
       '<dl class="join-gets"><div><dt>The club</dt><dd>' + esc(CONTENT.club) + '</dd></div><div><dt>The community</dt><dd>' + esc(CONTENT.community) + '</dd></div></dl></div>' +
-      '<div class="tie-field" aria-hidden="true"></div></div>' +
-      '<div class="join-form">' +
+      '<div class="join-form panel mist">' +
       (me ? '<h2>You\'re signed in</h2><p class="muted">As ' + esc(me.name) + '.</p><a class="btn navy" href="members">Go to the directory</a>' : '<div id="joinFlow"></div>') +
       '</div></section>');
   }
@@ -292,7 +292,7 @@
       history.replaceState(null, '', App.toPath('tell'));
     }
     if (!tellEmail) { go('join'); return ''; }
-    return page('<section class="signin-card surface"><h1>Tell the club leads</h1>' +
+    return page('<section class="signin-card panel mist"><h1>Tell the club leads</h1>' +
       '<p class="muted">In a cohort, but applied with another email? Send this and a leader will link <b class="ph-sensitive">' + esc(tellEmail) + '</b> to your name, so you can sign in with it.</p>' +
       '<form class="form-grid" id="tellForm" novalidate>' +
       '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +
@@ -324,7 +324,7 @@
   // The application email's button lands here: it names the person by the email after the #,
   // counts the click, and opens the form, so an application can be tied to who started it (F113).
   function pageApply() {
-    return page('<section class="signin-card surface"><h1>The application form</h1><p class="muted" id="applyNote">Opening it now…</p></section>');
+    return page('<section class="signin-card panel mist"><h1>The application form</h1><p class="muted" id="applyNote">Opening it now…</p></section>');
   }
 
   async function wireApply() {
@@ -358,7 +358,7 @@
       history.replaceState(null, '', App.toPath('signin'));
     }
     if (!linkCode) { go('join'); return ''; }
-    return page('<section class="signin-card banded"><h1>Sign in to the club</h1>' +
+    return page('<section class="signin-card panel mist tied"><h1>Sign in to the club</h1>' +
       '<p class="muted">You\'re signing in as <b class="ph-sensitive">' + esc(linkCode.email) + '</b>.</p>' +
       '<form class="code-form" id="linkForm" novalidate><button class="btn gold" type="submit">Sign in</button>' +
       '<div class="code-links"><a class="link" href="join">Use another email</a></div></form></section>');

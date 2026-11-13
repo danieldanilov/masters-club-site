@@ -111,7 +111,7 @@ var App = (function () {
   }
   function errorBlock(err) {
     return '<div class="wrap page"><div class="note warn">' + esc(err.message || 'Something went wrong') + '</div>' +
-      '<p style="margin-top:16px"><button class="btn quiet" data-retry>Try again</button></p></div>';
+      '<p class="mt-2"><button class="btn quiet" data-retry>Try again</button></p></div>';
   }
   function page(inner) {
     return '<div class="wrap page">' + inner + '</div>';

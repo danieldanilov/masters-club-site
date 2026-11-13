@@ -45,7 +45,7 @@
 
   function pageEvent(params) {
     var e = find(params.get('e'));
-    if (!e) return page('<div class="note warn">This event isn\'t here. It may be for another group, or it has passed.</div><p style="margin-top:16px"><a class="link" href="events">All events</a></p>');
+    if (!e) return page('<div class="note warn">This event isn\'t here. It may be for another group, or it has passed.</div><p class="mt-2"><a class="link" href="events">All events</a></p>');
     return page('<p class="back"><a class="link" href="events">All events</a></p><div id="eventBody">' + eventHtml(e) + '</div>');
   }
 
@@ -72,9 +72,9 @@
       }
     }
     var others = e.going_count - e.attendees.length;
-    return '<div class="event-layout"><div class="event-main"><h1 dir="auto">' + esc(e.title) + '</h1>' +
-      '<div class="tags" style="margin-top:12px"><span class="tag">' + esc(Core.EVENT_KINDS[e.kind] || e.kind) + '</span><span class="tag">' + esc(audienceLabel(e.audience)) + '</span>' + (e.status === 'cancelled' ? statusLine(e) : '') + '</div>' +
-      '<p class="lead" style="margin-top:16px">' + esc(when(e)) + (e.end_time ? ' to ' + esc(e.end_time) : '') + '</p>' +
+    return '<div class="event-layout"><div><h1 dir="auto">' + esc(e.title) + '</h1>' +
+      '<div class="tags mt-2"><span class="tag">' + esc(Core.EVENT_KINDS[e.kind] || e.kind) + '</span><span class="tag">' + esc(audienceLabel(e.audience)) + '</span>' + (e.status === 'cancelled' ? statusLine(e) : '') + '</div>' +
+      '<p class="lead mt-2">' + esc(when(e)) + (e.end_time ? ' to ' + esc(e.end_time) : '') + '</p>' +
       (e.place ? '<p dir="auto">' + (e.map_url ? '<a class="link" href="' + esc(e.map_url) + '" target="_blank" rel="noopener">' + esc(e.place) + '</a>' : esc(e.place)) + '</p>' : '') +
       (e.details ? '<p class="details ph-sensitive" dir="auto">' + esc(e.details) + '</p>' : '') +
       (e.price ? '<p>' + esc(e.price) + (e.pay_url ? ' <a class="link" href="' + esc(e.pay_url) + '" target="_blank" rel="noopener">Pay here</a>' : '') + (e.me.paid ? ' <span class="tag">Paid</span>' : '') + '</p>' : '') +
@@ -85,12 +85,12 @@
       '<div class="actions event-actions"><a href="' + esc(Core.googleCalendarUrl(e, link)) + '" target="_blank" rel="noopener" class="btn quiet small ph-no-capture" data-gcal>Google Calendar</a>' +
       '<button class="btn quiet small" data-ics>Apple or Outlook</button>' +
       '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a></div></div>' +
-      '<aside class="event-side"><h2 class="sub">Who\'s coming</h2>' +
+      '<aside class="event-side panel mist tied"><h2 class="sub">Who\'s coming</h2>' +
       (e.going_count ? '<p>' + e.attendees.map(function (a) { return '<a class="person-link" href="members?m=' + esc(a.id) + '" dir="auto">' + esc(a.name) + '</a>'; }).join(', ') +
         (others > 0 ? (e.attendees.length ? ' and ' : '') + others + ' more' : '') + '</p>' : '<p class="muted">Nobody yet.</p>') +
       (e.waitlist_count ? '<p class="muted">' + e.waitlist_count + ' on the waitlist</p>' : '') +
       (e.owners.length ? '<p class="muted">Run by ' + esc(e.owners.map(function (o) { return o.name; }).join(', ')) + '</p>' : '') +
-      (e.can_manage ? '<div class="row-actions" style="margin-top:28px"><a class="link" href="event-roster?e=' + esc(e.id) + '">Manage sign-ups</a><a class="link" href="event-edit?e=' + esc(e.id) + '">Edit</a>' +
+      (e.can_manage ? '<div class="row-actions mt-4"><a class="link" href="event-roster?e=' + esc(e.id) + '">Manage sign-ups</a><a class="link" href="event-edit?e=' + esc(e.id) + '">Edit</a>' +
         '<button class="link" data-cancel>' + (e.status === 'cancelled' ? 'Bring it back' : 'Cancel the event') + '</button></div>' : '') + '</aside></div>';
   }
 
@@ -150,8 +150,8 @@
     var cohorts = Array.from(new Set(state.data.directory.members.map(function (m) { return m.cohort; }).filter(Boolean))).sort();
     var audiences = leader ? ['all', 'club', 'community'].concat(cohorts.map(function (c) { return 'cohort:' + c; })).concat(['leaders']) : ['all', state.me.tier];
     return page('<p class="back"><a class="link" href="' + (id ? 'event?e=' + esc(id) : 'events') + '">Back</a></p><h1>' + (id ? 'Edit the event' : 'Post an event') + '</h1>' +
-      (!leader && !id ? '<p class="lead measure" style="margin-top:12px">A bar, a run, a group going to something outside. Anyone in the club can get something going.</p>' : '') +
-      '<form class="form-grid event-form" id="eventForm" novalidate style="margin-top:24px">' +
+      (!leader && !id ? '<p class="lead measure mt-2">A bar, a run, a group going to something outside. Anyone in the club can get something going.</p>' : '') +
+      '<form class="form-grid form-narrow mt-3" id="eventForm" novalidate>' +
       field('Title', 'title', 'text', 'maxlength="120" required dir="auto"') +
       '<div class="form-row">' + field('Date', 'date', 'date', 'required') + field('Start time', 'time', 'time', 'required') + field('End time', 'end_time', 'time', '', 'Optional') + '</div>' +
       field('Where', 'place', 'text', 'maxlength="120" dir="auto"') +
@@ -216,7 +216,7 @@
   function drawRoster(eventId, rows) {
     var box = $('#roster');
     if (!box) return;
-    if (!rows.length) { box.innerHTML = '<p class="muted" style="margin-top:20px">Nobody has signed up yet.</p>'; return; }
+    if (!rows.length) { box.innerHTML = '<p class="muted mt-3">Nobody has signed up yet.</p>'; return; }
     box.innerHTML = '<div class="roster">' + rows.map(function (r) {
       return '<div class="roster-row" data-row="' + esc(r.member_id) + '"><div class="who"><span class="name" dir="auto">' + esc(r.name) + '</span> <span class="tag ' + esc(r.tier) + '">' + esc(TIER_LABEL[r.tier] || '') + '</span>' +
         (r.status === 'waitlist' ? ' <span class="tag">Waitlist</span>' : '') + (r.email ? '<div class="muted small ph-sensitive">' + esc(r.email) + '</div>' : '') + (r.note ? '<div class="muted small ph-sensitive" dir="auto">' + esc(r.note) + '</div>' : '') + '</div>' +
