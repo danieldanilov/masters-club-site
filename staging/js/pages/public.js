@@ -134,7 +134,7 @@
   }
 
   // The one place to sign in or apply. Members-only pages show it too, with a line saying why.
-  // Applying is a navy panel that ends in the tie; signing in is a card with everything at one width.
+  // Applying is a navy panel that ends in the tie; signing in is a card with one field, the width of the card.
   function pageJoin(params, opts) {
     var s = info().settings || {};
     var me = state.me;
@@ -149,8 +149,49 @@
       '<div class="tie-field" aria-hidden="true"></div></section>' +
       '<section class="path-signin banded"><h2>Already a member?</h2>' +
       (me ? '<p class="muted">You\'re signed in as ' + esc(me.name) + '.</p><a class="btn navy" href="#/members">Go to the directory</a>'
-        : '<p class="muted">Current cohort or alumni, sign in with Google or with a code sent to your email. No password, and you stay signed in. If we don\'t have your email yet, you can ask a leader to add you in one step.</p>' + signInBlock()) +
+        : '<p class="muted">Current cohort or alumni: enter your email and we\'ll send you a link that signs you in. No password, and you stay signed in.</p>' + signInBlock()) +
       '</section></div>');
+  }
+
+  // Where the link in the email lands: one tap to sign in. The tap matters, since some mail
+  // services open every link to scan it, which would use up the code before the person does.
+  // The address and code leave the address bar at once, so they stay out of history (F104).
+  var linkCode = null;
+  function pageSignIn(params) {
+    if (params.get('e') && params.get('c')) {
+      linkCode = { email: Core.normalizeEmail(params.get('e')), code: String(params.get('c')) };
+      history.replaceState(null, '', location.pathname + location.search + '#/signin');
+    }
+    if (!linkCode) { go('#/join'); return ''; }
+    return page('<div class="panel"><div class="inner"><h1>Sign in to the club</h1>' +
+      '<p class="muted">You\'re signing in as <b class="ph-sensitive">' + esc(linkCode.email) + '</b>.</p>' +
+      '<form class="code-form" id="linkForm" novalidate><button class="btn gold" type="submit">Sign in</button>' +
+      '<div class="code-links"><a class="link" href="#/join">Use another email</a></div></form></div></div>');
+  }
+
+  function wireSignIn() {
+    var f = $('#linkForm');
+    if (!f) return;
+    f.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var btn = $('button[type=submit]', f);
+      clearErrors(f);
+      setBusy(btn, true, 'Signing in…');
+      var mine = linkCode;
+      linkCode = null;
+      try {
+        await App.signInWithCode(mine.email, mine.code, 'link');
+      } catch (err) {
+        Analytics.track('sign in failed', { method: 'link', reason: err.code });
+        linkCode = mine;
+        setBusy(btn, false);
+        showErrors(f, err);
+        if (err.code === 'invalid') {
+          $('.code-links', f).innerHTML = '<a class="link" href="#/join" data-new-link>Send a new link</a>';
+          $('[data-new-link]', f).addEventListener('click', function () { App.forgetCode(); linkCode = null; });
+        }
+      }
+    });
   }
 
   function pageDenied(email) {
@@ -169,7 +210,7 @@
         '<button class="btn quiet" data-signout-guest>Use another account</button></div></div>');
     }
     return page('<div class="panel"><div class="inner"><h1>We don\'t have this email yet</h1>' +
-      '<p class="muted">You signed in as <b class="ph-sensitive">' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name.</p>' +
+      '<p class="muted">You signed in as <b class="ph-sensitive">' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name. Not in one yet? <a class="link" href="#/join?apply">Apply to a cohort</a>.</p>' +
       '<form class="form-grid" id="requestForm" novalidate style="margin-top:24px">' +
       '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto" value="' + esc(g.name) + '"><span class="field-error" data-err="name"></span></label>' +
       '<label>Anything that helps us find you <span class="hint">Your cohort, or the name you use on WhatsApp</span><textarea name="note" maxlength="280" rows="2" dir="auto"></textarea><span class="field-error" data-err="note"></span></label>' +
@@ -216,5 +257,6 @@
   App.route('#/partners', { page: pagePartners, wire: wirePartners, isPublic: true });
   App.route('#/join', { page: pageJoin, wire: wireJoin, isPublic: true });
   App.route('#/request', { page: pageRequest, wire: wireRequest });
+  App.route('#/signin', { page: pageSignIn, wire: wireSignIn, isPublic: true });
   App.route('#/denied', { page: function (params) { return pageDenied(params.get('e')); } });
 })();
