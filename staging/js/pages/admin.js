@@ -28,7 +28,7 @@
     var set = data.settings;
     var site = App.siteLink('#/members');
     var digest = Core.buildDigest({ today: state.data.today, siteUrl: site, events: state.data.events, posts: state.data.posts, joined: data.joined_this_week });
-    var invite = 'The Masters Club directory is live. Find who can help with what, see what\'s coming up, and post jobs. Sign in with your email, no password: ' + site;
+    var invite = 'The Masters Club directory is live. Find who can help with what, see what\'s coming up, and post jobs. Sign in with Google or your email, no password: ' + site;
     var notIn = data.members.filter(function (m) { return m.active && !m.joined; });
 
     var requestsHtml = pending.length ? pending.map(function (r) {
