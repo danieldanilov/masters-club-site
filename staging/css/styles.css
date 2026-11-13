@@ -313,23 +313,35 @@ input[type=checkbox] { width: 1.125rem; height: 1.125rem; margin: 0; cursor: poi
 
 /* ---------- join ---------- */
 
-/* One card in the middle of the page, the page's one tie across its top: Join and the sign-in
-   link's landing page. */
-.join { max-width: 34rem; margin: 2.5rem auto 0; }
-.join h1 { margin-bottom: 0.75rem; }
-.join h2 { font-size: 1.5rem; margin: 0; }
-.join .code-form { margin-top: 1.25rem; }
-.join-more { display: grid; gap: 0.5rem; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid #cfd8e6; }
-.join-more p { margin: 0; }
-.join .muted.small .link { display: inline-flex; align-items: center; min-height: 2.75rem; }
-.join-more .form-grid { margin-top: 0.75rem; }
-.join > .muted.small, #joinFlow > .muted.small { margin: 1.25rem 0 0; }
-.gate { max-width: 34rem; margin: 0 auto 1.25rem; }
+/* One card: the club in navy on the left, ending in the page's one tie, and the form on the
+   right. */
+.join { display: grid; grid-template-columns: minmax(0, 1fr); max-width: 60rem; margin: 2.5rem auto 0; background: var(--white); border: 1px solid var(--mist-2); border-radius: var(--radius); overflow: hidden; }
+@media (min-width: 900px) { .join { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.join-club { display: flex; flex-direction: column; background: var(--navy); color: var(--white); }
+.join-club-body { padding: 2.75rem 2.75rem 2.25rem; }
+.join-club h1 { color: var(--white); margin-bottom: 1rem; }
+.join-lead { color: var(--on-navy); margin: 0 0 0.75rem; max-width: var(--measure); }
+.join-gets { display: grid; gap: 1.5rem; margin: 2rem 0 0; padding-top: 1.75rem; border-top: 1px solid var(--navy-3); }
+.join-gets dt { font-family: var(--display); font-size: 1.25rem; color: var(--white); margin-bottom: 0.375rem; }
+.join-gets dd { margin: 0; color: var(--on-navy); }
+.join-club .tie-field { flex: 1 0 5rem; border-radius: 0; }
+.join-form { display: flex; flex-direction: column; justify-content: center; padding: 2.75rem; }
+.join-form h2 { font-size: 1.75rem; margin: 0 0 0.75rem; }
+.join-form .code-form { margin-top: 1.75rem; gap: 1rem; }
+.join-next { font-family: var(--display); font-size: 1.25rem; margin: 2rem 0 0; }
+.join-next .link, .join-more .link { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.join-more { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--mist-2); }
+.join-more .form-grid { margin-top: 1rem; }
+/* On a phone the form comes first, so a member signs in without scrolling past the club. */
+@media (max-width: 899px) { .join-form { order: -1; } }
+@media (max-width: 480px) { .join-club-body, .join-form { padding: 2rem 1.25rem; } }
+/* The sign-in link's page and the application hand-off: one small card in the middle. */
+.signin-card { max-width: 34rem; margin: 2.5rem auto 0; }
+.gate { max-width: 60rem; margin: 0 auto 1.25rem; }
 .dev-signin { display: grid; gap: 0.5rem; }
 .dev-signin input { background-color: var(--white); }
 .code-form { display: grid; gap: 0.75rem; }
 .code-form > label { display: grid; gap: 0.4375rem; font-size: 0.95rem; font-weight: 700; color: var(--ink); }
-.code-form input { background-color: var(--white); }
 .code-form .btn { width: 100%; }
 .code-input { text-align: center; font-size: 1.5rem; letter-spacing: 0.4em; font-variant-numeric: tabular-nums; }
 .code-links { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; }

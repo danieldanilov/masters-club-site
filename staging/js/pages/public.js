@@ -133,25 +133,22 @@
     });
   }
 
-  // The one way in: an email. A member gets a link and a code; anyone else sees the same screen,
-  // with the application form and a note to the leads for someone who applied with another email,
-  // so the page never tells who's a member (F109). Members-only pages show it too, with a line why.
+  // The one way in: one card, the club on the left in navy, the form on the right. An email gets
+  // a member a sign-in code and anyone else the application form, behind the same screen, so the
+  // page never tells who's a member (F109, F113). Members-only pages show it too, with a line why.
   function pageJoin(params, opts) {
     var me = state.me;
     var gated = opts && opts.gated;
-    return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
-      '<section class="join banded"><h1>Sign in or apply</h1>' +
-      (me ? '<p class="muted">You\'re signed in as ' + esc(me.name) + '.</p><a class="btn navy" href="members">Go to the directory</a>'
-        : '<div id="joinFlow"></div>') +
-      '</section>');
-  }
-
-  // Applying, as the settings have it: the form, or why it's closed.
-  function applyLine() {
     var s = info().settings || {};
-    if (s.applications_open === false) return '<p class="muted small">Not a member yet? Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.</p>';
-    return '<p class="muted small">Not a member yet? <a class="link" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Apply to a cohort</a>' +
-      (s.applications_note ? '. ' + esc(s.applications_note) : '') + '</p>';
+    return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
+      '<section class="join"><div class="join-club"><div class="join-club-body"><h1>Join the club</h1>' +
+      '<p class="join-lead">Open to Reichman master\'s students.' + (s.applications_note ? ' ' + esc(s.applications_note) : '') + '</p>' +
+      (s.applications_open === false ? '<p class="join-lead">Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.</p>' : '') +
+      '<dl class="join-gets"><div><dt>The club</dt><dd>' + esc(CONTENT.club) + '</dd></div><div><dt>The community</dt><dd>' + esc(CONTENT.community) + '</dd></div></dl></div>' +
+      '<div class="tie-field" aria-hidden="true"></div></div>' +
+      '<div class="join-form">' +
+      (me ? '<h2>You\'re signed in</h2><p class="muted">As ' + esc(me.name) + '.</p><a class="btn navy" href="members">Go to the directory</a>' : '<div id="joinFlow"></div>') +
+      '</div></section>');
   }
 
   function wireJoin() {
@@ -174,17 +171,12 @@
     });
   }
 
-  function trackApply(root) {
-    var apply = $('[data-apply]', root);
-    if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked'); });
-  }
-
   function emailStep(flow) {
-    flow.innerHTML = '<p class="muted">Enter your email. If you\'re a member, we\'ll send you a link that signs you in, with no password, and you stay signed in.</p>' +
+    flow.innerHTML = '<h2>Sign in or apply</h2>' +
+      '<p class="muted">Members get a sign-in code. Everyone else gets the application form.</p>' +
       '<form class="code-form" id="emailForm" novalidate>' +
       '<label>Your email<input type="email" name="email" autocomplete="email" required placeholder="you@example.com"><span class="field-error" data-err="email"></span></label>' +
-      '<button class="btn navy" type="submit">Continue</button></form>' + applyLine();
-    trackApply(flow);
+      '<button class="btn navy" type="submit">Continue</button></form>';
     var f = $('#emailForm', flow);
     f.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -208,21 +200,26 @@
     });
   }
 
-  // The same screen for everyone who gave an email, member or not.
+  // The same screen for everyone who gave an email: the code for members, the application for
+  // everyone else.
   function checkStep(flow, email) {
-    flow.innerHTML = '<form class="code-form" id="codeForm" novalidate>' +
-      '<h2>Check your email</h2>' +
-      '<p class="muted">If <b class="ph-sensitive">' + esc(email) + '</b> is on the members list, we sent it a link that signs you in. Open it on any device, or type the 6-digit code from it here. Both work for 30 minutes. If it isn\'t there, check spam.</p>' +
+    var s = info().settings || {};
+    var open = s.applications_open !== false;
+    flow.innerHTML = '<h2>Check your email</h2>' +
+      '<p class="muted">Members: type the code we sent <b class="ph-sensitive">' + esc(email) + '</b>. It works for 30 minutes. If it isn\'t there, check spam.</p>' +
+      '<form class="code-form" id="codeForm" novalidate>' +
       '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
-      '<button class="btn gold" type="submit">Sign in</button>' +
-      '<div class="code-links"><button class="link" type="button" data-resend>Send a new link</button><button class="link" type="button" data-change>Use another email</button></div></form>' +
-      '<div class="join-more">' + applyLine() +
-      '<p class="muted small">Used a different email when you applied? <button class="link" type="button" data-tell>Tell the club leads</button></p>' +
+      '<button class="btn gold" type="submit">Sign in</button></form>' +
+      (open ? '<p class="join-next">Not a member? <a class="link" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application</a></p>'
+        : '<p class="join-next">Not a member? Applications are closed right now.</p>') +
+      '<div class="join-more"><div class="code-links"><button class="link" type="button" data-resend>Send a new code</button><button class="link" type="button" data-change>Use another email</button><button class="link" type="button" data-tell>Applied with another email?</button></div>' +
       '<form class="form-grid" id="tellForm" novalidate hidden>' +
+      '<p class="muted small">Tell the club leads which email they have for you, and they\'ll link this one to your name.</p>' +
       '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +
       '<label>Anything that helps us find you <span class="hint">Your cohort, or the email you applied with</span><textarea name="note" maxlength="280" rows="2" dir="auto"></textarea><span class="field-error" data-err="note"></span></label>' +
       '<div class="row-actions"><button class="btn navy" type="submit">Send to the club leads</button></div></form></div>';
-    trackApply(flow);
+    var apply = $('[data-apply]', flow);
+    if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked', { source: 'join' }); });
     var f = $('#codeForm', flow);
     f.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -236,18 +233,18 @@
         showErrors(f, err);
       }
     });
-    $('[data-resend]', f).addEventListener('click', async function () {
+    $('[data-resend]', flow).addEventListener('click', async function () {
       clearErrors(f);
       try {
         await Api.call('emailStart', { email: email }, { session: '' });
         Analytics.track('sign in code sent', { resend: true });
         App.setPendingCode(email);
-        toast('New link sent');
+        toast('Sent again');
       } catch (err) {
         showErrors(f, err);
       }
     });
-    $('[data-change]', f).addEventListener('click', function () {
+    $('[data-change]', flow).addEventListener('click', function () {
       App.setPendingCode(null);
       Analytics.reset();
       emailStep(flow);
@@ -274,6 +271,31 @@
     });
   }
 
+  // The application email's button lands here: it names the person by the email after the #,
+  // counts the click, and opens the form, so an application can be tied to who started it (F113).
+  function pageApply() {
+    return page('<section class="signin-card surface"><h1>The application form</h1><p class="muted" id="applyNote">Opening it now…</p></section>');
+  }
+
+  async function wireApply() {
+    var got = new URLSearchParams(location.hash.slice(1));
+    if (got.get('e')) {
+      Analytics.identify({ id: Core.normalizeEmail(got.get('e')), email: Core.normalizeEmail(got.get('e')) });
+      history.replaceState(null, '', App.toPath('apply'));
+    }
+    await App.refreshPublic();
+    var s = info().settings || {};
+    if (s.applications_open === false) {
+      $('#applyNote').textContent = 'Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.';
+      return;
+    }
+    Analytics.track('apply clicked', { source: 'email' });
+    var url = s.apply_url || CONTENT.applyUrl;
+    $('#applyNote').innerHTML = 'Opening it now. If nothing happens, <a class="link" href="' + esc(url) + '">open the form</a>.';
+    // A moment for the event to leave before the page does.
+    setTimeout(function () { location.replace(url); }, 400);
+  }
+
   // Where the link in the email lands: one tap to sign in. The tap matters, since some mail
   // services open every link to scan it, which would use up the code before the person does.
   // The address and code leave the address bar at once, so they stay out of history (F104).
@@ -286,7 +308,7 @@
       history.replaceState(null, '', App.toPath('signin'));
     }
     if (!linkCode) { go('join'); return ''; }
-    return page('<section class="join banded"><h1>Sign in to the club</h1>' +
+    return page('<section class="signin-card banded"><h1>Sign in to the club</h1>' +
       '<p class="muted">You\'re signing in as <b class="ph-sensitive">' + esc(linkCode.email) + '</b>.</p>' +
       '<form class="code-form" id="linkForm" novalidate><button class="btn gold" type="submit">Sign in</button>' +
       '<div class="code-links"><a class="link" href="join">Use another email</a></div></form></section>');
@@ -327,4 +349,5 @@
   App.route('partners', { page: pagePartners, wire: wirePartners, isPublic: true });
   App.route('join', { page: pageJoin, wire: wireJoin, isPublic: true });
   App.route('signin', { page: pageSignIn, wire: wireSignIn, isPublic: true });
+  App.route('apply', { page: pageApply, wire: wireApply });
 })();
