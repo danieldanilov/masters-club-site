@@ -188,7 +188,7 @@
         await Api.call('emailStart', { email: email }, { session: '' });
         // They're named by the email they gave; signing in as a member names them by their row.
         Analytics.identify({ id: email, email: email });
-        Analytics.track('sign in code sent', { resend: false });
+        Analytics.track('sign in code sent');
         App.setPendingCode(email);
         checkStep(flow, email);
         $('input[name=code]', flow).focus();
@@ -205,19 +205,17 @@
   function checkStep(flow, email) {
     var s = info().settings || {};
     var open = s.applications_open !== false;
+    var minutes = Math.round(Core.CODE_LIMITS.ttlMs / 60000);
     flow.innerHTML = '<h2>Check your email</h2>' +
-      '<p class="muted">Members: type the code we sent <b class="ph-sensitive">' + esc(email) + '</b>. It works for 30 minutes. If it isn\'t there, check spam.</p>' +
+      '<p class="muted">Masters, type the code we sent to <b class="ph-sensitive">' + esc(email) + '</b>. It works for ' + minutes + ' minutes. <button class="link" type="button" data-change>Change email</button></p>' +
       '<form class="code-form" id="codeForm" novalidate>' +
       '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
-      '<button class="btn gold" type="submit">Sign in</button></form>' +
-      (open ? '<p class="join-next">Not a member? <a class="link" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application</a></p>'
-        : '<p class="join-next">Not a member? Applications are closed right now.</p>') +
-      '<div class="join-more"><div class="code-links"><button class="link" type="button" data-resend>Send a new code</button><button class="link" type="button" data-change>Use another email</button><button class="link" type="button" data-tell>Applied with another email?</button></div>' +
-      '<form class="form-grid" id="tellForm" novalidate hidden>' +
-      '<p class="muted small">Tell the club leads which email they have for you, and they\'ll link this one to your name.</p>' +
-      '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +
-      '<label>Anything that helps us find you <span class="hint">Your cohort, or the email you applied with</span><textarea name="note" maxlength="280" rows="2" dir="auto"></textarea><span class="field-error" data-err="note"></span></label>' +
-      '<div class="row-actions"><button class="btn navy" type="submit">Send to the club leads</button></div></form></div>';
+      '<button class="btn gold" type="submit">Sign in</button>' +
+      '<button class="btn quiet" type="button" data-resend disabled>Send a new code</button>' +
+      '<p class="field-error" data-resend-note role="status"></p></form>' +
+      '<div class="join-apply">' + (open
+        ? '<p>Not a member? <a class="link" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application now</a></p><p class="muted small">You\'ll get it by email too.</p>'
+        : '<p>Not a member? Applications are closed right now.</p>') + '</div>';
     var apply = $('[data-apply]', flow);
     if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked', { source: 'join' }); });
     var f = $('#codeForm', flow);
@@ -233,27 +231,68 @@
         showErrors(f, err);
       }
     });
-    $('[data-resend]', flow).addEventListener('click', async function () {
-      clearErrors(f);
-      try {
-        await Api.call('emailStart', { email: email }, { session: '' });
-        Analytics.track('sign in code sent', { resend: true });
-        App.setPendingCode(email);
-        toast('Sent again');
-      } catch (err) {
-        showErrors(f, err);
-      }
-    });
     $('[data-change]', flow).addEventListener('click', function () {
       App.setPendingCode(null);
       Analytics.reset();
       emailStep(flow);
     });
-    var tell = $('#tellForm', flow);
-    $('[data-tell]', flow).addEventListener('click', function () {
-      tell.hidden = false;
-      $('input[name=name]', tell).focus();
+    resendButton(flow, email);
+  }
+
+  // "Send a new code" opens once the wait since the last email is over: a minute, then longer
+  // each time, the same as the API (F110). Pressing it sends one and counts it.
+  function resendButton(flow, email) {
+    var btn = $('[data-resend]', flow);
+    var note = $('[data-resend-note]', flow);
+    var waits = Core.CODE_LIMITS.waitsMs;
+    var tick = function () {
+      if (!btn.isConnected) return;
+      var p = App.pendingCode() || { at: Date.now(), n: 1 };
+      var left = Math.ceil((p.at + waits[Math.min(p.n, waits.length) - 1] - Date.now()) / 1000);
+      btn.disabled = left > 0;
+      btn.textContent = left > 0 ? 'Send a new code in ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Send a new code';
+      if (left > 0) setTimeout(tick, 1000);
+    };
+    btn.addEventListener('click', async function () {
+      var p = App.pendingCode() || { n: 1 };
+      note.textContent = '';
+      setBusy(btn, true, 'Sending…');
+      try {
+        await Api.call('emailStart', { email: email }, { session: '' });
+        Analytics.track('new code requested');
+        App.setPendingCode(email, p.n + 1);
+        toast('New code sent');
+      } catch (err) {
+        note.textContent = err.message;
+      }
+      setBusy(btn, false);
+      tick();
     });
+    tick();
+  }
+
+  // The link at the foot of the application email lands here: someone in a cohort who applied
+  // with another email tells the leads, and a leader links this email to their name (F109).
+  var tellEmail = null;
+  function pageTell() {
+    var got = new URLSearchParams(location.hash.slice(1));
+    if (got.get('e')) {
+      tellEmail = Core.normalizeEmail(got.get('e'));
+      history.replaceState(null, '', App.toPath('tell'));
+    }
+    if (!tellEmail) { go('join'); return ''; }
+    return page('<section class="signin-card surface"><h1>Tell the club leads</h1>' +
+      '<p class="muted">In a cohort, but applied with another email? Send this and a leader will link <b class="ph-sensitive">' + esc(tellEmail) + '</b> to your name, so you can sign in with it.</p>' +
+      '<form class="form-grid" id="tellForm" novalidate>' +
+      '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto"><span class="field-error" data-err="name"></span></label>' +
+      '<label>Anything that helps us find you <span class="hint">Your cohort, or the email you applied with</span><textarea name="note" maxlength="280" rows="2" dir="auto"></textarea><span class="field-error" data-err="note"></span></label>' +
+      '<div class="row-actions"><button class="btn navy" type="submit">Send to the club leads</button></div></form></section>');
+  }
+
+  function wireTell() {
+    var tell = $('#tellForm');
+    if (!tell) return;
+    Analytics.identify({ id: tellEmail, email: tellEmail });
     tell.addEventListener('submit', async function (e) {
       e.preventDefault();
       var btn = $('button[type=submit]', tell);
@@ -261,9 +300,9 @@
       setBusy(btn, true, 'Sending…');
       try {
         var fd = new FormData(tell);
-        await Api.call('requestAccess', { email: email, name: fd.get('name'), note: fd.get('note') }, { session: '' });
+        await Api.call('requestAccess', { email: tellEmail, name: fd.get('name'), note: fd.get('note') }, { session: '' });
         Analytics.track('access requested');
-        tell.outerHTML = '<p class="note">Sent. A leader will link <b class="ph-sensitive">' + esc(email) + '</b> to your name, and then you can sign in with it.</p>';
+        tell.outerHTML = '<p class="note">Sent. A leader will link <b class="ph-sensitive">' + esc(tellEmail) + '</b> to your name, and then you can sign in with it.</p>';
       } catch (err) {
         setBusy(btn, false);
         showErrors(tell, err);
@@ -350,4 +389,5 @@
   App.route('join', { page: pageJoin, wire: wireJoin, isPublic: true });
   App.route('signin', { page: pageSignIn, wire: wireSignIn, isPublic: true });
   App.route('apply', { page: pageApply, wire: wireApply });
+  App.route('tell', { page: pageTell, wire: wireTell });
 })();
