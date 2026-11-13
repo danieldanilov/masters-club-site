@@ -1,7 +1,7 @@
 // Talks to the API. Sends JSON as text/plain so the browser skips the CORS preflight,
 // which Apps Script can't answer.
 var Api = (function () {
-  // Staging shares danieldanilov.github.io with the live site, so every key the site stores starts
+  // Staging shares themasters.club with the live site, so every key the site stores starts
   // with the environment's prefix: empty on the live site, `stg-` on staging (F92).
   var PREFIX = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_PREFIX) || '';
   var SESSION_KEY = PREFIX + 'mc-session-v1';
