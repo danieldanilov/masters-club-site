@@ -215,7 +215,7 @@
     var open = s.applications_open !== false;
     var minutes = Math.round(Core.CODE_LIMITS.ttlMs / 60000);
     flow.innerHTML = '<h2>Check your email</h2>' +
-      '<p class="muted small">We emailed your code to <b class="ph-sensitive">' + esc(email) + '</b> (<button class="link" type="button" data-change>change email</button>). It works for ' + minutes + ' minutes.</p>' +
+      '<p class="muted small">We emailed your code to <b class="ph-sensitive">' + esc(email) + '</b> <span class="nowrap">(<button class="link" type="button" data-change>change email</button>)</span>. It works for ' + minutes + ' minutes.</p>' +
       '<form class="code-form" id="codeForm" novalidate>' +
       '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
       '<button class="btn gold" type="submit">Sign in</button>' +

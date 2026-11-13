@@ -81,6 +81,7 @@ p { margin: 0 0 1em; text-wrap: pretty; }
 .muted { color: var(--muted); }
 .small { font-size: var(--s-small); }
 .measure { max-width: var(--measure); }
+.nowrap { white-space: nowrap; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .icon { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
 
