@@ -8,8 +8,8 @@
     var first = u.first;
     var opt = function (list, val) { return list.map(function (i) { return '<option ' + (val === i ? 'selected' : '') + '>' + esc(i) + '</option>'; }).join(''); };
     return page('<div class="page-head"><h1>' + (!first ? 'Edit your profile' : u.hasProfile ? 'Welcome. Check your profile' : 'Welcome. Fill in your profile') + '</h1></div>' +
-      (first ? '<p class="lead measure" style="margin-top:-8px">' + (u.hasProfile ? 'We filled this in from your application. Fix anything that\'s off, and save.' : 'This is how other members find you. It takes a minute, and you can change it any time.') + ' <a class="link" href="members">Skip for now</a></p>' : '') +
-      '<div class="two" style="margin-top:28px"><form class="form-grid cols" id="profileForm" novalidate>' +
+      (first ? '<p class="lead measure">' + (u.hasProfile ? 'We filled this in from your application. Fix anything that\'s off, and save.' : 'This is how other members find you. It takes a minute, and you can change it any time.') + ' <a class="link" href="members">Skip for now</a></p>' : '') +
+      '<div class="two mt-4"><form class="form-grid cols" id="profileForm" novalidate>' +
       // Photos come only from uploads, so a first visit without one asks for it up front (F106).
       '<div class="photo-row"><span id="myPhoto">' + App.avatar(u, 'lg') + '</span><div class="row-actions"><label class="btn ' + (first && !p.photo ? 'gold' : 'quiet') + ' small file-btn">' + (p.photo ? 'Change photo' : 'Add a photo') + '<input type="file" accept="image/*" aria-label="Choose a photo" class="ph-no-capture"></label>' +
       (p.photo ? '<button class="link" type="button" id="removePhoto">Remove photo</button>' : '') + (first && !p.photo ? '<span class="muted small">Add one so people recognise you at meetings.</span>' : '') + '</div></div>' +
@@ -31,7 +31,7 @@
       '<label class="check-line"><input type="checkbox" name="show_email" ' + (p.show_email ? 'checked' : '') + '> Show my email <span class="ph-sensitive">(' + esc(u.email) + ')</span> on my profile</label>' +
       '<label class="check-line"><input type="checkbox" name="hidden" ' + (p.hidden ? 'checked' : '') + '> Hide me from the directory</label>' +
       '<div class="row-actions"><button class="btn gold" type="submit">Save profile</button></div>' +
-      '</form><div class="sticky"><div class="preview-label">How others see you</div><div class="preview"><div class="sheet" id="preview"></div></div></div></div>');
+      '</form><div class="sticky"><div class="preview-label">How others see you</div><div class="preview panel mist tied"><div class="sheet" id="preview"></div></div></div></div>');
   }
 
   function readProfileForm(f) {

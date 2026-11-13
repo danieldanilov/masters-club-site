@@ -21,7 +21,7 @@
     var cohorts = Array.from(new Set(d.members.map(function (m) { return m.cohort; }).filter(Boolean)))
       .sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
     var hidden = d.hiddenTiers.length
-      ? '<p class="note" style="margin-bottom:16px">You\'re viewing as ' + esc(TIER_LABEL[d.viewer.tier]) + ', so ' + esc(d.hiddenTiers.map(function (t) { return TIER_LABEL[t]; }).join(' and ')) + ' profiles are hidden from you.</p>'
+      ? '<p class="note mb-2">You\'re viewing as ' + esc(TIER_LABEL[d.viewer.tier]) + ', so ' + esc(d.hiddenTiers.map(function (t) { return TIER_LABEL[t]; }).join(' and ')) + ' profiles are hidden from you.</p>'
       : '';
     var tiers = Core.TIERS.filter(function (t) { return d.members.some(function (m) { return m.tier === t; }); });
     $('#dirBody').innerHTML = nudge() + hidden +
@@ -109,9 +109,9 @@
     var role = roleLine(p);
     return '<button class="member-card" data-id="' + esc(m.id) + '" type="button">' + avatar(m) + '<span class="body">' +
       '<span class="name" dir="auto">' + esc(m.name) + '</span>' +
-      '<span class="role ph-sensitive" dir="auto" style="display:block">' + (role || 'No profile yet') + '</span>' +
+      '<span class="role ph-sensitive" dir="auto">' + (role || 'No profile yet') + '</span>' +
       '<span class="tags ph-sensitive">' + tags(m) + '</span>' +
-      (p.help.length ? '<span class="help ph-sensitive" dir="auto" style="display:block">Can help with ' + esc(p.help.join(', ')) + '</span>' : '') +
+      (p.help.length ? '<span class="help ph-sensitive" dir="auto">Can help with ' + esc(p.help.join(', ')) + '</span>' : '') +
       '</span></button>';
   }
 
@@ -125,12 +125,12 @@
     function list(label, arr) {
       return arr && arr.length ? '<h3>' + label + '</h3><div class="tags ph-sensitive">' + arr.map(function (h) { return '<span class="tag" dir="auto">' + esc(h) + '</span>'; }).join('') + '</div>' : '';
     }
-    var actions = wa || li || mail ? '<div class="actions ph-no-capture">' + wa + li + mail + '</div>' : (preview ? '' : '<p class="muted small" style="margin-top:28px">No contact links yet.</p>');
+    var actions = wa || li || mail ? '<div class="actions ph-no-capture">' + wa + li + mail + '</div>' : (preview ? '' : '<p class="muted small mt-4">No contact links yet.</p>');
     return avatar(m, 'lg') +
       '<h2 dir="auto">' + esc(m.name) + '</h2>' +
       '<div class="role ph-sensitive" dir="auto">' + (roleLine(p) || 'No role yet') + '</div>' +
-      (p.city || p.program ? '<div class="muted ph-sensitive" dir="auto" style="margin-top:4px">' + esc([p.program, p.city].filter(Boolean).join(', ')) + '</div>' : '') +
-      '<div class="tags ph-sensitive" style="margin-top:14px">' + tags(m) + '</div>' +
+      (p.city || p.program ? '<div class="muted ph-sensitive" dir="auto">' + esc([p.program, p.city].filter(Boolean).join(', ')) + '</div>' : '') +
+      '<div class="tags ph-sensitive mt-2">' + tags(m) + '</div>' +
       (p.bio ? '<p class="bio ph-sensitive" dir="auto">' + esc(p.bio) + '</p>' : '') +
       list('Can help with', p.help) + list('Looking for', p.looking) + list('Open to', p.open_to) + list('Outside work', p.interests) + actions;
   }

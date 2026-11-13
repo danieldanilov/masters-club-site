@@ -82,6 +82,8 @@ var Analytics = (function () {
   }
 
   function ph() { return on && window.posthog; }
+  // Who this page load has named, until posthog-js has loaded and can say itself.
+  var named = null;
 
   /* ---------- what the site calls ---------- */
 
@@ -98,13 +100,22 @@ var Analytics = (function () {
     },
 
     // A signed-in member, by their stable id from the Members tab.
-    identify: function (me) {
-      if (!ph() || !me || !me.id) return;
-      posthog.identify(me.id, { name: me.name, email: me.email, tier: me.tier, cohort: me.cohort });
+    // Names this browser's person: a member by their id from the Members tab, with name, email,
+    // tier and cohort; someone who only gave an email on Join by that email. Moving from one to
+    // the other starts a new person, so nobody's actions land on someone else (F109).
+    identify: function (who) {
+      if (!ph() || !who || !who.id) return;
+      var current = posthog.__loaded && typeof posthog.get_distinct_id === 'function' && posthog.get_property('$user_state') === 'identified' ? posthog.get_distinct_id() : named;
+      if (current && current !== who.id) posthog.reset();
+      var props = {};
+      ['name', 'email', 'tier', 'cohort'].forEach(function (k) { if (who[k] !== undefined) props[k] = who[k]; });
+      posthog.identify(who.id, props);
+      named = who.id;
     },
 
     // Signing out: the next person on this browser starts anonymous.
     reset: function () {
+      named = null;
       if (ph()) posthog.reset();
     },
 

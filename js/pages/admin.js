@@ -34,8 +34,7 @@
     var requestsHtml = pending.length ? pending.map(function (r) {
       var guess = bestMatch(r.name, data.members);
       // Linking gives them that member's account, so it's always a choice, never the default.
-      var google = r.google_name && r.google_name !== r.name ? '<div class="muted small ph-sensitive" dir="auto">Google calls them ' + esc(r.google_name) + '</div>' : '';
-      return '<div class="request" data-request="' + esc(r.id) + '"><div><span class="who" dir="auto">' + esc(r.name) + '</span> <span class="muted ph-sensitive">' + esc(r.email) + '</span>' + google +
+      return '<div class="request" data-request="' + esc(r.id) + '"><div><span class="who" dir="auto">' + esc(r.name) + '</span> <span class="muted ph-sensitive">' + esc(r.email) + '</span>' +
         (r.note ? '<div class="muted small ph-sensitive" dir="auto">"' + esc(r.note) + '"</div>' : '') + '</div>' +
         '<div class="row-actions"><select data-link aria-label="Link to"><option value="">Add as a new member</option>' +
         data.members.map(function (m) { return '<option value="' + esc(m.id) + '">Link to ' + esc(m.name) + (m.cohort ? ', ' + esc(cohortLabel(m.cohort)) : '') + (guess && guess.id === m.id ? ' (name matches)' : '') + '</option>'; }).join('') +
@@ -54,7 +53,7 @@
       '<section class="admin-section" id="s-waiting"><h2>Access requests' + (pending.length ? ' <span class="badge">' + pending.length + '</span>' : '') + '</h2>' + requestsHtml + '</section>' +
       '<section class="admin-section"><h2>Partner messages' + (inquiries.length ? ' <span class="badge">' + inquiries.length + '</span>' : '') + '</h2>' + inquiriesHtml + '</section>' +
 
-      '<section class="admin-section" id="s-spread"><h2>Spread the word</h2><p class="muted measure">WhatsApp stays where people talk. These open it with the message written, ready for you to pick the group and send.</p><div class="row-actions" style="margin-top:12px">' +
+      '<section class="admin-section" id="s-spread"><h2>Spread the word</h2><p class="muted measure">WhatsApp stays where people talk. These open it with the message written, ready for you to pick the group and send.</p><div class="row-actions mt-2">' +
       (digest ? '<a class="btn gold small" href="' + esc(Core.whatsappUrl(digest)) + '" target="_blank" rel="noopener" id="postDigest">Post the weekly update on WhatsApp</a><button class="btn quiet small" id="copyDigest">Copy the update</button>' : '<span class="muted">Nothing new for a weekly update right now.</span>') +
       '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(invite)) + '" target="_blank" rel="noopener" id="postInvite">Invite people on WhatsApp</a></div>' +
       (notIn.length ? '<details class="not-in"><summary>' + notIn.length + ' haven\'t signed in yet</summary><p class="muted" dir="auto">' + esc(notIn.map(function (m) { return m.name; }).join(', ')) + '</p></details>' : '') + '</section>' +
@@ -65,18 +64,18 @@
         return '<tr><td>' + esc(TIER_LABEL[v]) + '</td>' + tiers.map(function (s) {
           return '<td><input type="checkbox" aria-label="' + esc(TIER_LABEL[v] + ' sees ' + TIER_LABEL[s]) + '" data-rule="' + v + ':' + s + '" ' + (data.rules[v][s] ? 'checked' : '') + ' ' + (v === 'leader' ? 'disabled' : '') + '></td>';
         }).join('') + '</tr>';
-      }).join('') + '</tbody></table></div><p class="muted small" style="margin-top:10px">Leaders always see everyone. Changes apply on each member\'s next page load.</p></section>' +
+      }).join('') + '</tbody></table></div><p class="muted small mt-1">Leaders always see everyone. Changes apply on each member\'s next page load.</p></section>' +
 
-      '<section class="admin-section" id="s-add"><h2>Add people</h2><div class="form-grid" style="max-width:720px">' +
+      '<section class="admin-section" id="s-add"><h2>Add people</h2><div class="form-grid form-narrow">' +
       '<label>One per line as "Name, email", or paste rows from a sheet, header row included <span class="hint">From a sheet we read only name, email, position, company, city, program, LinkedIn, interests, tier and cohort. Everything else in the paste is ignored, and people already here only get what\'s empty filled in.</span><textarea id="bulk" rows="5" placeholder="Shir Amar, shir.amar@gmail.com&#10;Ben Tal"></textarea></label>' +
       '<div class="add-row"><label>Tier ' + tierSelect('id="bulkTier"', 'club') + '</label>' +
-      '<label>Cohort number <input type="text" id="bulkCohort" inputmode="numeric" placeholder="2" maxlength="20" style="width:120px"></label>' +
+      '<label>Cohort number <input type="text" id="bulkCohort" inputmode="numeric" placeholder="2" maxlength="20" class="input-short"></label>' +
       '<button class="btn gold" id="bulkAdd">Add</button></div><div id="bulkResult"></div></div></section>' +
 
-      '<section class="admin-section" id="s-grad"><h2>When a cohort ends</h2><div class="add-row"><label>Cohort number <input type="text" id="gradCohort" inputmode="numeric" maxlength="20" style="width:120px"></label><button class="btn quiet" id="gradGo">Move to community</button></div><p class="muted small" style="margin-top:8px">Its club members become community members. Leaders stay leaders.</p></section>' +
+      '<section class="admin-section" id="s-grad"><h2>When a cohort ends</h2><div class="add-row"><label>Cohort number <input type="text" id="gradCohort" inputmode="numeric" maxlength="20" class="input-short"></label><button class="btn quiet" id="gradGo">Move to community</button></div><p class="muted small mt-1">Its club members become community members. Leaders stay leaders.</p></section>' +
 
-      '<section class="admin-section" id="s-members"><div class="page-head" style="margin-bottom:14px"><h2 style="font-size:1.75rem">Members</h2><span class="count">' + data.members.length + '</span><span class="spacer"></span>' +
-      '<input type="search" id="adminFilter" placeholder="Filter by name or email" aria-label="Filter members" style="max-width:260px"><button class="btn quiet small" id="exportCsv">Export members</button><button class="btn quiet small" id="exportAtt">Export attendance</button></div>' +
+      '<section class="admin-section" id="s-members"><div class="page-head"><h2>Members</h2><span class="count">' + data.members.length + '</span><span class="spacer"></span>' +
+      '<input type="search" id="adminFilter" placeholder="Filter by name or email" aria-label="Filter members" class="filter-input"><button class="btn quiet small" id="exportCsv">Export members</button><button class="btn quiet small" id="exportAtt">Export attendance</button></div>' +
       '<div class="table-wrap"><table class="members-table"><thead><tr><th>Name</th><th>Email</th><th>Second email</th><th>Tier</th><th>Cohort</th><th>Last seen</th><th>Came to</th><th>Active</th><th></th></tr></thead><tbody>' +
       data.members.map(function (m) {
         var self = m.id === state.me.id;
@@ -92,7 +91,7 @@
           '<td><button class="btn quiet small" data-save>Save</button></td></tr>';
       }).join('') + '</tbody></table></div></section>' +
 
-      '<section class="admin-section" id="s-public"><h2>Public pages</h2><div class="admin-pair"><form class="form-grid" id="settingsForm" novalidate style="max-width:720px">' +
+      '<section class="admin-section" id="s-public"><h2>Public pages</h2><div class="admin-pair"><form class="form-grid form-narrow" id="settingsForm" novalidate>' +
       '<label class="check-line"><input type="checkbox" name="applications_open" ' + (set.applications_open === undefined || Core.toBool(set.applications_open) ? 'checked' : '') + '> Applications are open</label>' +
       '<label>Application link<input type="url" name="apply_url" value="' + esc(set.apply_url || CONTENT.applyUrl) + '"><span class="field-error" data-err="apply_url"></span></label>' +
       '<label>A line above the application button <span class="hint">Optional, like the closing date</span><input type="text" name="applications_note" value="' + esc(set.applications_note || '') + '" maxlength="200" dir="auto"><span class="field-error" data-err="applications_note"></span></label>' +
@@ -100,12 +99,12 @@
       '<label>Email leaders about new requests and partner messages at <span class="hint">Never shown publicly</span><input type="email" name="notify_email" value="' + esc(set.notify_email || '') + '"><span class="field-error" data-err="notify_email"></span></label>' +
       '<div class="row-actions"><button class="btn gold" type="submit">Save public pages</button></div></form>' +
       '<div class="admin-partners"><h3>Partners on the public page</h3><div id="partnerList"></div>' +
-      '<form class="form-grid" id="partnerForm" novalidate style="max-width:720px;margin-top:16px"><input type="hidden" name="id"><div class="form-row"><label>Name<input type="text" name="name" maxlength="60"><span class="field-error" data-err="name"></span></label>' +
+      '<form class="form-grid form-narrow" id="partnerForm" novalidate><input type="hidden" name="id"><div class="form-row"><label>Name<input type="text" name="name" maxlength="60"><span class="field-error" data-err="name"></span></label>' +
       '<label>Line about them<input type="text" name="note" maxlength="200" dir="auto"><span class="field-error" data-err="note"></span></label></div>' +
       '<div class="form-row"><label>Website<input type="url" name="url" placeholder="https://..."><span class="field-error" data-err="url"></span></label><label>Logo link<input type="url" name="logo" placeholder="https://..."><span class="field-error" data-err="logo"></span></label></div>' +
       '<div class="form-row"><label>Place on the page <span class="hint">1 shows first; empty goes after the numbered ones</span><input type="number" name="position" min="1" max="999" step="1" inputmode="numeric"><span class="field-error" data-err="position"></span></label></div>' +
       '<div class="row-actions"><button class="btn quiet" type="submit" data-partner-save>Add partner</button><button class="link" type="button" data-partner-cancel hidden>Cancel</button></div></form></div></div>' +
-      '<p class="muted small measure" style="margin-top:16px">Next meeting on Home comes from the next event marked public. Past meetings come from public events with a recap. Tiers and leader photos live in content.js, see docs/05-operations.md.</p></section>' +
+      '<p class="muted small measure mt-2">Next meeting on Home comes from the next event marked public. Past meetings come from public events with a recap. Tiers and leader photos live in content.js, see docs/05-operations.md.</p></section>' +
 
       '<section class="admin-section" id="s-log"><h2>Recent activity</h2><div class="log ph-sensitive">' + (data.log.length ? data.log.map(function (l) {
         return '<div><span class="muted">' + esc(String(l.at).slice(0, 10)) + '</span> ' + esc(nameOf(data, l.actor)) + ': ' + esc(l.action) + (l.detail ? ' <span class="muted">' + esc(l.detail) + '</span>' : '') + '</div>';
@@ -161,7 +160,7 @@
     });
     function drawPartners(list) {
       $('#partnerList').innerHTML = list.filter(function (p) { return p.active; }).map(function (p) {
-        return '<div class="request" data-partner="' + esc(p.id) + '"><div>' + (p.position ? '<span class="place">' + p.position + '.</span> ' : '') + '<span class="who" dir="auto">' + esc(p.name) + '</span> <span class="muted" dir="auto">' + esc(p.note) + '</span></div><div class="row-actions"><button class="btn quiet small" data-edit-partner>Edit</button><button class="btn quiet small" data-unlist>Take off the page</button></div></div>';
+        return '<div class="request" data-partner="' + esc(p.id) + '"><div>' + (p.position ? esc(p.position) + '. ' : '') + '<span class="who" dir="auto">' + esc(p.name) + '</span> <span class="muted" dir="auto">' + esc(p.note) + '</span></div><div class="row-actions"><button class="btn quiet small" data-edit-partner>Edit</button><button class="btn quiet small" data-unlist>Take off the page</button></div></div>';
       }).join('') || '<p class="muted">None yet.</p>';
       $$('[data-partner]').forEach(function (row) {
         // Edit loads the partner into the form below, which then saves it instead of adding one.

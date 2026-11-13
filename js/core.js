@@ -19,7 +19,14 @@ var Core = (function () {
   // a code at most every 30 seconds and 3 in 6 hours; addresses not on the list share 20 in
   // 6 hours, and get none once the day's mail is down to the last 20 (kept for members). Access
   // requests from guests share 10 in 6 hours, and leaders' notification emails stop at that reserve.
-  var CODE_LIMITS = { ttlMs: 10 * 60 * 1000, maxTries: 5, gapMs: 30 * 1000, perWindow: 3, windowMs: 6 * 60 * 60 * 1000, strangersPerWindow: 20, quotaReserve: 20, requestsPerWindow: 10 };
+  // Sign-in emails: a code lives 30 minutes; each new email to the same address waits longer than
+  // the last (F110), and a day with none starts the count again. quotaReserve is the day's mail
+  // kept for sign-in emails; requests and partner messages share a cap per window.
+  var CODE_LIMITS = {
+    ttlMs: 30 * 60 * 1000, maxTries: 5,
+    waitsMs: [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000, 3 * 60 * 60 * 1000, 24 * 60 * 60 * 1000],
+    quietMs: 24 * 60 * 60 * 1000, quotaReserve: 20, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
+  };
   var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'hidden', 'bio', 'photo'];
   // Adding a kind of event or post is one line here; the forms and pages read these lists.
   var EVENT_KINDS = { meeting: 'Meeting', meetup: 'Meetup', dinner: 'Dinner', external: 'Outside event' };
@@ -567,12 +574,12 @@ var Core = (function () {
 
   // state: {first, n, last} for one sender in the current window, or null. Returns ok, the
   // state to store if sent, and when refused, the seconds until the next send is allowed.
-  function codeThrottle(state, now, allowance) {
+  function codeThrottle(state, now) {
     var L = CODE_LIMITS;
-    if (!state || !(now - state.first < L.windowMs)) return { ok: true, next: { first: now, n: 1, last: now } };
-    if (now - state.last < L.gapMs) return { ok: false, waitSeconds: Math.ceil((state.last + L.gapMs - now) / 1000) };
-    if (state.n >= allowance) return { ok: false, waitSeconds: Math.ceil((state.first + L.windowMs - now) / 1000) };
-    return { ok: true, next: { first: state.first, n: state.n + 1, last: now } };
+    if (!state || !state.n || !(now - state.last < L.quietMs)) return { ok: true, next: { n: 1, last: now } };
+    var wait = L.waitsMs[Math.min(state.n, L.waitsMs.length) - 1];
+    if (now - state.last < wait) return { ok: false, waitSeconds: Math.ceil((state.last + wait - now) / 1000) };
+    return { ok: true, next: { n: state.n + 1, last: now } };
   }
 
   // The square to keep from a photo: all of a square one, the middle of a wide one, and near the

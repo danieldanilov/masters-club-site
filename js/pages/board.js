@@ -91,7 +91,7 @@
     var cohorts = Array.from(new Set(state.data.directory.members.map(function (m) { return m.cohort; }).filter(Boolean))).sort();
     var audiences = leader ? [['all', 'Everyone'], ['club', 'Club'], ['community', 'Community']].concat(cohorts.map(function (c) { return ['cohort:' + c, cohortLabel(c)]; })) : [['all', 'Everyone'], [state.me.tier, TIER_LABEL[state.me.tier]]];
     return page('<p class="back"><a class="link" href="board">Back to the board</a></p><h1>' + (id ? 'Edit the post' : 'Post something') + '</h1>' +
-      '<form class="form-grid event-form" id="postForm" novalidate style="margin-top:24px">' +
+      '<form class="form-grid form-narrow mt-3" id="postForm" novalidate>' +
       '<div class="form-row"><label>What is it<select name="kind">' + kinds.map(function (k) { return '<option value="' + k + '" ' + (p.kind === k ? 'selected' : '') + '>' + esc(Core.POST_KINDS[k]) + '</option>'; }).join('') + '</select></label>' +
       '<label>Who it\'s for<select name="audience">' + audiences.map(function (a) { return '<option value="' + esc(a[0]) + '" ' + (p.audience === a[0] ? 'selected' : '') + '>' + esc(a[1]) + '</option>'; }).join('') + '</select></label></div>' +
       '<label>Title<input type="text" name="title" value="' + v('title') + '" maxlength="120" required dir="auto"><span class="field-error" data-err="title"></span></label>' +

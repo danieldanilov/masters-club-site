@@ -5,7 +5,6 @@ var Api = (function () {
   // with the environment's prefix: empty on the live site, `stg-` on staging (F92).
   var PREFIX = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_PREFIX) || '';
   var SESSION_KEY = PREFIX + 'mc-session-v1';
-  var GUEST_KEY = PREFIX + 'mc-guest-v1';
   var onSignedOut = function () {};
   var READS = { boot: 1, me: 1, directory: 1, photos: 1, publicInfo: 1, eventRoster: 1, 'admin.overview': 1 };
   var writes = 0;
@@ -15,10 +14,11 @@ var Api = (function () {
     try { if (value) window[store].setItem(key, value); else window[store].removeItem(key); } catch (e) { /* private mode */ }
   }
 
-  function ApiError(code, message, fields) {
+  function ApiError(code, message, fields, retryAfter) {
     this.code = code;
     this.message = message;
     this.fields = fields || {};
+    this.retryAfter = retryAfter || 0;
   }
 
   async function call(action, body, opts) {
@@ -40,8 +40,8 @@ var Api = (function () {
     var data;
     try { data = await res.json(); } catch (e) { throw new ApiError('server', 'The server sent something unexpected. Try again in a minute.'); }
     if (!data.ok) {
-      var err = new ApiError(data.error.code, data.error.message, data.error.fields);
-      if (err.code === 'unauthorized' && action !== 'signIn' && action !== 'requestAccess') {
+      var err = new ApiError(data.error.code, data.error.message, data.error.fields, data.error.retryAfter);
+      if (err.code === 'unauthorized') {
         write('localStorage', SESSION_KEY, null);
         onSignedOut(err);
       }
@@ -55,8 +55,6 @@ var Api = (function () {
     call: call,
     session: function () { return read('localStorage', SESSION_KEY); },
     setSession: function (s) { write('localStorage', SESSION_KEY, s); },
-    guest: function () { return read('sessionStorage', GUEST_KEY); },
-    setGuest: function (g) { write('sessionStorage', GUEST_KEY, g); },
     onSignedOut: function (fn) { onSignedOut = fn; },
     // Counts changes sent, so a refresh can tell it started before one of them.
     writes: function () { return writes; }
