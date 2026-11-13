@@ -328,6 +328,9 @@ input[type=checkbox] { width: 1.125rem; height: 1.125rem; margin: 0; cursor: poi
   .paths.apply-first .path-signin { order: 0; }
 }
 @media (max-width: 480px) { .path-apply .path-body { padding: 1.75rem 1.25rem 1.75rem; } }
+/* Beside the taller apply panel, the sign-in card's few lines sit in its middle, not at the top
+   of an empty card. */
+@media (min-width: 900px) { .path-signin { display: flex; flex-direction: column; justify-content: center; } }
 .gate { margin: 0 0 1.25rem; }
 
 /* The sign-in panel on Denied and Request wears the tie as a band. */
@@ -335,15 +338,10 @@ input[type=checkbox] { width: 1.125rem; height: 1.125rem; margin: 0; cursor: poi
 .panel::before { content: ""; display: block; height: 0.75rem; background: var(--tie-small); }
 .panel .inner { padding: 2rem 2rem 2.25rem; }
 .panel h1 { margin-bottom: 0.625rem; }
-/* Google's button, then "or", then a code by email, all at one width: the card's, up to the
-   400px Google allows its button (in px, since that limit doesn't grow with the root size). */
-.signin { display: grid; gap: 1rem; margin-top: 1.5rem; width: 100%; max-width: 400px; }
-.gsi-slot { min-height: 2.75rem; display: flex; }
-.dev-signin { display: grid; gap: 0.5rem; max-width: 100%; }
+/* One field and one button, the card's full width at every size. */
+.signin { display: grid; gap: 1rem; margin-top: 1.5rem; width: 100%; }
+.dev-signin { display: grid; gap: 0.5rem; }
 .dev-signin input { background-color: var(--white); }
-.or { display: flex; align-items: center; gap: 0.75rem; color: var(--muted); font-size: var(--s-small); }
-.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--mist-2); }
-.path-signin .or::before, .path-signin .or::after, .panel .or::before, .panel .or::after { background: #cfd8e6; }
 .code-form { display: grid; gap: 0.75rem; }
 .code-form > label { display: grid; gap: 0.4375rem; font-size: 0.95rem; font-weight: 700; color: var(--ink); }
 .code-form input { background-color: var(--white); }

@@ -21,7 +21,8 @@ var Analytics = (function () {
   // Properties autocapture fills from what was clicked.
   var TEXT_KEYS = ['$el_text', '$elements_chain'];
 
-  function cleanUrl(s) { return String(s).replace(EMAIL, '[email]'); }
+  // The code in a sign-in link (#/signin?e=...&c=123456) is as good as a password for 10 minutes.
+  function cleanUrl(s) { return String(s).replace(EMAIL, '[email]').replace(/([?&]c=)\d+/g, '$1[code]'); }
   function cleanText(s) { return cleanUrl(s).replace(PHONE, longNumber); }
 
   function cleanProps(props, keys, fn) {
