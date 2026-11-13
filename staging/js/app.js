@@ -236,22 +236,62 @@ var App = (function () {
 
   /* ---------- sign-in ---------- */
 
-  // Signing in asks only for an email: a link and a code arrive in one email, and either signs
-  // you in. The dev server also offers a one-click stand-in, which the browser tests use.
+  var gsiReady = null;
+  function loadGoogle() {
+    if (gsiReady) return gsiReady;
+    gsiReady = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      // hl=en: otherwise Google draws the button in the visitor's Google language, Hebrew for most members.
+      s.src = 'https://accounts.google.com/gsi/client?hl=en';
+      s.async = true;
+      s.onload = function () {
+        google.accounts.id.initialize({ client_id: CONFIG.GOOGLE_CLIENT_ID, callback: function (r) { handleCredential(r.credential); }, ux_mode: 'popup', auto_select: false });
+        resolve();
+      };
+      s.onerror = function () { gsiReady = null; reject(new Error('Google sign-in did not load')); };
+      document.head.appendChild(s);
+    });
+    return gsiReady;
+  }
+
+  // Google draws its button at exactly the width it's given, so it gets the full width of the
+  // sign-in card, the same as the email field under it, within Google's 200 to 400px.
+  function gsiWidth(slot) { return Math.max(200, Math.min(400, Math.floor(slot.clientWidth) || 400)); }
+
+  // Every place you can sign in: Google's button, then a code by email.
   function signInBlock() {
-    return '<div class="signin">' + (CONFIG.DEV_SIGNIN ? '<div class="dev-slot"></div>' : '') + '<div class="code-slot"></div></div>';
+    return '<div class="signin"><div class="gsi-slot"></div><div class="or"><span>or</span></div><div class="code-slot"></div></div>';
   }
 
   // Fills every sign-in block on the page.
   function mountSignIn() {
     $$('.code-slot').forEach(mountCode);
-    $$('.dev-slot').forEach(function (slot) {
-      slot.innerHTML = '<form class="dev-signin" data-dev-signin><input type="email" name="email" placeholder="Test email" required aria-label="Test email">' +
-        '<button class="btn navy" type="submit">Sign in (dev)</button></form>';
-      $('form', slot).addEventListener('submit', function (e) {
-        e.preventDefault();
-        handleCredential(devToken(new FormData(e.target).get('email')));
+    var slots = $$('.gsi-slot');
+    if (!slots.length) return;
+    if (CONFIG.DEV_SIGNIN) {
+      slots.forEach(function (slot) {
+        // The stand-in takes the width Google's button would get.
+        slot.innerHTML = '<form class="dev-signin" data-dev-signin style="width:' + gsiWidth(slot) + 'px"><input type="email" name="email" placeholder="Test email" required aria-label="Test email">' +
+          '<button class="btn navy" type="submit">Sign in (dev)</button></form>';
+        $('form', slot).addEventListener('submit', function (e) {
+          e.preventDefault();
+          handleCredential(devToken(new FormData(e.target).get('email')));
+        });
       });
+      return;
+    }
+    if (!CONFIG.GOOGLE_CLIENT_ID) {
+      slots.forEach(function (slot) { slot.innerHTML = '<div class="note warn">Sign-in is not set up yet.</div>'; });
+      return;
+    }
+    loadGoogle().then(function () {
+      slots.forEach(function (slot) {
+        var width = gsiWidth(slot);
+        slot.innerHTML = '';
+        google.accounts.id.renderButton(slot, { theme: slot.dataset.theme || 'outline', size: 'large', shape: 'rectangular', text: 'signin_with', width: width, locale: 'en' });
+      });
+    }).catch(function (e) {
+      slots.forEach(function (slot) { slot.innerHTML = '<div class="note warn">' + esc(e.message) + '. Turn off blockers for this site and reload.</div>'; });
     });
   }
 
@@ -266,8 +306,9 @@ var App = (function () {
   async function handleCredential(credential) {
     $('#app').innerHTML = loading('Signing you in');
     try {
-      await signedIn(await Api.call('signIn', { credential: credential }, { session: '' }), 'dev');
+      await signedIn(await Api.call('signIn', { credential: credential }, { session: '' }), 'google');
     } catch (e) {
+      Analytics.track('sign in failed', { method: 'google', reason: e.code });
       $('#app').innerHTML = errorBlock(e);
       wireRetry();
     }
@@ -322,7 +363,7 @@ var App = (function () {
     if (p) return codeStep(slot, p.email);
     slot.innerHTML = '<form class="code-form" novalidate>' +
       '<label>Your email<input type="email" name="email" autocomplete="email" required placeholder="you@example.com"><span class="field-error" data-err="email"></span></label>' +
-      '<button class="btn navy" type="submit">Email me a sign-in link</button></form>';
+      '<button class="btn navy" type="submit">Email me a code</button></form>';
     var f = $('form', slot);
     f.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -346,10 +387,10 @@ var App = (function () {
 
   function codeStep(slot, email) {
     slot.innerHTML = '<form class="code-form" novalidate>' +
-      '<p class="small" style="margin:0">We sent a sign-in link to <b class="ph-sensitive">' + esc(email) + '</b>. Open it on any device, or type the 6-digit code from the same email here. Both work for 10 minutes. If it isn\'t there, check spam.</p>' +
+      '<p class="small" style="margin:0">We sent a code to <b class="ph-sensitive">' + esc(email) + '</b>. It works for 10 minutes. If it isn\'t there, check spam.</p>' +
       '<label>Code from the email<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required class="code-input"><span class="field-error" data-err="code"></span></label>' +
       '<button class="btn gold" type="submit">Sign in</button>' +
-      '<div class="code-links"><button class="link" type="button" data-resend>Send a new link</button><button class="link" type="button" data-change>Use another email</button></div></form>';
+      '<div class="code-links"><button class="link" type="button" data-resend>Send a new code</button><button class="link" type="button" data-change>Use another email</button></div></form>';
     var f = $('form', slot);
     f.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -357,7 +398,7 @@ var App = (function () {
       clearErrors(f);
       setBusy(btn, true, 'Checking…');
       try {
-        await signInWithCode(email, new FormData(f).get('code'), 'email');
+        await signedIn(await Api.call('emailVerify', { email: email, code: new FormData(f).get('code') }, { session: '' }), 'email');
       } catch (err) {
         Analytics.track('sign in failed', { method: 'email', reason: err.code });
         setBusy(btn, false);
@@ -370,7 +411,7 @@ var App = (function () {
         await Api.call('emailStart', { email: email }, { session: '' });
         Analytics.track('sign in code sent', { resend: true });
         setPendingCode(email);
-        toast('New link sent');
+        toast('New code sent');
       } catch (err) {
         showErrors(f, err);
       }
@@ -379,11 +420,6 @@ var App = (function () {
       setPendingCode(null);
       mountCode(slot);
     });
-  }
-
-  // The one way a code becomes a session, typed or from the link in the email.
-  async function signInWithCode(email, code, method) {
-    return signedIn(await Api.call('emailVerify', { email: email, code: code }, { session: '' }), method);
   }
 
   function signOut() {
@@ -395,6 +431,7 @@ var App = (function () {
     clearSaved();
     state.guest = null;
     setPendingCode(null);
+    if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
     toast('Signed out');
     go('#/');
   }
@@ -567,7 +604,7 @@ var App = (function () {
 
   return {
     $: $, $$: $$, esc: esc, state: state, icon: icon, page: page, avatar: avatar, tags: tags, roleLine: roleLine, toast: toast, go: go, loading: loading,
-    errorBlock: errorBlock, setBusy: setBusy, wireRetry: wireRetry, clearErrors: clearErrors, showErrors: showErrors, longDate: longDate, signInBlock: signInBlock, signInWithCode: signInWithCode, forgetCode: function () { setPendingCode(null); },
+    errorBlock: errorBlock, setBusy: setBusy, wireRetry: wireRetry, clearErrors: clearErrors, showErrors: showErrors, longDate: longDate, signInBlock: signInBlock,
     openSheet: openSheet, closeSheet: closeSheet, route: route, render: render, refresh: refresh, refreshPublic: refreshPublic, replaceItem: replaceItem, saveData: saveData,
     siteLink: siteLink, copyText: copyText, downloadFile: downloadFile, photoCache: photoCache, writeJson: writeJson, PHOTOS_KEY: PHOTOS_KEY, fetchPhotos: fetchPhotos, start: start
   };
