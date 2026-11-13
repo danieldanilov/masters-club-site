@@ -73,8 +73,39 @@ var App = (function () {
     clearTimeout(toast.timer);
     toast.timer = setTimeout(function () { t.classList.remove('show'); }, 2600);
   }
+  /* ---------- addresses ---------- */
+
+  // A page is named by its address under the site's base (/ live, /staging/ on staging, from the
+  // <base> the build writes): 'meetings?m=x', and '' for home. Links are written the same way,
+  // href="meetings", and resolve against the base from any page (F108).
+  var BASE = new URL(document.baseURI).pathname;
+  function toPath(route) {
+    return BASE + route;
+  }
+  function routeAt(url) {
+    var p = url.pathname.indexOf(BASE) === 0 ? url.pathname.slice(BASE.length) : '';
+    return p.replace(/(^|\/)index\.html$/, '').replace(/\/$/, '') + url.search;
+  }
+  function currentRoute() {
+    return routeAt(location);
+  }
+  // A click on a link inside the site changes the page without reloading it.
+  function followLink(e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (a.target || a.hasAttribute('download')) return;
+    var url = new URL(a.href, document.baseURI);
+    if (url.origin !== location.origin || url.pathname.indexOf(BASE) !== 0 || /\.[a-z0-9]+$/i.test(url.pathname)) return;
+    e.preventDefault();
+    go(routeAt(url));
+  }
+
+  // A page that sends people elsewhere while it's being drawn gets the new page after it
+  // finishes, so its own empty draw doesn't land on top.
+  var drawing = false;
   function go(hash) {
-    if (location.hash === hash) render(); else location.hash = hash;
+    if (currentRoute() !== hash) history.pushState(null, '', toPath(hash));
+    if (drawing) Promise.resolve().then(render); else render();
   }
   function loading(text) {
     return '<div class="loading"><div class="spinner"></div>' + esc(text || 'Loading') + '</div>';
@@ -97,7 +128,7 @@ var App = (function () {
   }
   // The address to share for a page, the same one the WhatsApp links use.
   function siteLink(hash) {
-    return location.href.split('#')[0].split('?')[0] + hash;
+    return location.origin + toPath(hash);
   }
   function downloadFile(name, type, text) {
     var url = URL.createObjectURL(new Blob([text], { type: type }));
@@ -288,15 +319,15 @@ var App = (function () {
       toast('Welcome, ' + r.me.name.split(' ')[0]);
       var intended = readJson('sessionStorage', INTENDED_KEY);
       writeJson('sessionStorage', INTENDED_KEY, null);
-      go(intended || (r.me.first ? '#/me' : '#/members'));
+      go(intended || (r.me.first ? 'me' : 'members'));
     } else if (r.status === 'inactive') {
       Analytics.track('sign in failed', { method: method, reason: 'inactive' });
-      go('#/denied?e=' + encodeURIComponent(r.email));
+      go('denied?e=' + encodeURIComponent(r.email));
     } else {
       Analytics.track('sign in failed', { method: method, reason: 'not_on_list' });
       Api.setGuest(r.guest);
       state.guest = { email: r.email, name: r.name, request: r.request };
-      go('#/request');
+      go('request');
     }
   }
 
@@ -396,7 +427,7 @@ var App = (function () {
     state.guest = null;
     setPendingCode(null);
     toast('Signed out');
-    go('#/');
+    go('');
   }
 
   Api.onSignedOut(function () {
@@ -408,15 +439,15 @@ var App = (function () {
   /* ---------- nav ---------- */
 
   function renderNav(route) {
-    var links = [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners']];
+    var links = [['about', 'About'], ['meetings', 'Meetings'], ['partners', 'Partners']];
     if (state.me) {
-      links = [['#/members', 'Directory'], ['#/events', 'Events'], ['#/board', 'Board'], ['#/me', 'My profile']].filter(function (l) { return routeOn(l[0]); });
-      if (state.me.tier === 'leader') links.push(['#/admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
+      links = [['members', 'Directory'], ['events', 'Events'], ['board', 'Board'], ['me', 'My profile']].filter(function (l) { return routeOn(l[0]); });
+      if (state.me.tier === 'leader') links.push(['admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
     }
     // Signed in, the public pages step back to the footer.
-    $('#footLinks').innerHTML = state.me ? [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners'], ['#/join', 'Join']].map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('') : '';
+    $('#footLinks').innerHTML = state.me ? [['about', 'About'], ['meetings', 'Meetings'], ['partners', 'Partners'], ['join', 'Join']].map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('') : '';
     var html = links.map(function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; }).join('');
-    html += state.me ? '<a href="#/" data-signout>Sign out</a>' : '<a href="#/join" class="btn gold small">Sign in</a>';
+    html += state.me ? '<a href="./" data-signout>Sign out</a>' : '<a href="join" class="btn gold small">Sign in</a>';
     $('#nav').innerHTML = html;
     var so = $('[data-signout]');
     if (so) so.addEventListener('click', function (e) { e.preventDefault(); signOut(); });
@@ -452,7 +483,7 @@ var App = (function () {
     $$('[data-retry]').forEach(function (b) { b.addEventListener('click', render); });
   }
   function routeOf() {
-    var parts = (location.hash || '#/').split('?');
+    var parts = currentRoute().split('?');
     return { route: parts[0], params: new URLSearchParams(parts[1] || '') };
   }
 
@@ -483,19 +514,19 @@ var App = (function () {
 
   function render() {
     var at = routeOf();
-    var r = routes[at.route] || routes['#/'];
+    var r = routes[at.route] || routes[''];
     // Signed in, a flagged page that's off opens Home, like an address that doesn't exist.
-    if (r.flag && state.me && !routeOn(at.route)) r = routes['#/'];
+    if (r.flag && state.me && !routeOn(at.route)) r = routes[''];
     renderNav(at.route);
     setMenu(false);
     closeSheet();
     var app = $('#app');
     if (r.member && !state.me) {
       // A link from WhatsApp opens the right page after sign-in. The plain directory is the default anyway.
-      if (location.hash !== '#/members') writeJson('sessionStorage', INTENDED_KEY, location.hash);
+      if (currentRoute() !== 'members') writeJson('sessionStorage', INTENDED_KEY, currentRoute());
       var asking = Api.guest() && state.guest;
-      app.innerHTML = asking ? routes['#/request'].page(at.params) : routes['#/join'].page(new URLSearchParams(), { gated: true });
-      var shown = routes[asking ? '#/request' : '#/join'];
+      app.innerHTML = asking ? routes['request'].page(at.params) : routes['join'].page(new URLSearchParams(), { gated: true });
+      var shown = routes[asking ? 'request' : 'join'];
       if (shown.wire) shown.wire(at.params);
     } else if (r.member && !state.data) {
       app.innerHTML = loading('Opening the club');
@@ -516,7 +547,8 @@ var App = (function () {
         wireRetry();
       };
       try {
-        app.innerHTML = r.page(at.params);
+        drawing = true;
+        try { app.innerHTML = r.page(at.params); } finally { drawing = false; }
         var wired = r.wire ? r.wire(at.params) : null;
         if (wired && typeof wired.then === 'function') wired.catch(failed);
         if (wired === 'keep-scroll') { mountSignIn(); return; }
@@ -539,7 +571,8 @@ var App = (function () {
 
   function start() {
     $('#menuBtn').addEventListener('click', function () { setMenu(!$('#nav').classList.contains('open')); });
-    window.addEventListener('hashchange', render);
+    document.addEventListener('click', followLink);
+    window.addEventListener('popstate', render);
     if (CONFIG.ENV !== 'production') $('#envNote').textContent = CONFIG.ENV + ' build with test data';
     if (!state.publicInfo) state.publicInfo = readJson('localStorage', PUBLIC_KEY);
     refreshPublic();
@@ -569,6 +602,6 @@ var App = (function () {
     $: $, $$: $$, esc: esc, state: state, icon: icon, page: page, avatar: avatar, tags: tags, roleLine: roleLine, toast: toast, go: go, loading: loading,
     errorBlock: errorBlock, setBusy: setBusy, wireRetry: wireRetry, clearErrors: clearErrors, showErrors: showErrors, longDate: longDate, signInBlock: signInBlock, signInWithCode: signInWithCode, forgetCode: function () { setPendingCode(null); },
     openSheet: openSheet, closeSheet: closeSheet, route: route, render: render, refresh: refresh, refreshPublic: refreshPublic, replaceItem: replaceItem, saveData: saveData,
-    siteLink: siteLink, copyText: copyText, downloadFile: downloadFile, photoCache: photoCache, writeJson: writeJson, PHOTOS_KEY: PHOTOS_KEY, fetchPhotos: fetchPhotos, start: start
+    siteLink: siteLink, toPath: toPath, copyText: copyText, downloadFile: downloadFile, photoCache: photoCache, writeJson: writeJson, PHOTOS_KEY: PHOTOS_KEY, fetchPhotos: fetchPhotos, start: start
   };
 })();

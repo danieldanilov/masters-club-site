@@ -26,7 +26,7 @@
     var inquiries = data.inquiries.filter(function (i) { return i.status === 'new'; });
     var st = data.stats;
     var set = data.settings;
-    var site = App.siteLink('#/members');
+    var site = App.siteLink('members');
     var digest = Core.buildDigest({ today: state.data.today, siteUrl: site, events: state.data.events, posts: state.data.posts, joined: data.joined_this_week });
     var invite = 'The Masters Club directory is live. Find who can help with what, see what\'s coming up, and post jobs. Sign in with your email, no password: ' + site;
     var notIn = data.members.filter(function (m) { return m.active && !m.joined; });
@@ -310,5 +310,5 @@
     return best;
   }
 
-  App.route('#/admin', { page: pageAdmin, wire: wireAdmin, member: true });
+  App.route('admin', { page: pageAdmin, wire: wireAdmin, member: true });
 })();

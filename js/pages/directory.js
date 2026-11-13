@@ -4,7 +4,7 @@
 
   function pageMembers() {
     return page('<div class="page-head"><h1>Directory</h1><span class="count" id="count" aria-live="polite"></span>' +
-      '<span class="spacer"></span><a class="link" href="#/me">Edit my profile</a></div><div id="dirBody"></div>');
+      '<span class="spacer"></span><a class="link" href="me">Edit my profile</a></div><div id="dirBody"></div>');
   }
 
   var page_draw = null;
@@ -12,7 +12,7 @@
   function nudge() {
     var u = state.me;
     if (!u.needs_review) return '';
-    return '<p class="nudge" id="nudge">Is your profile still right? <button class="link" type="button" id="looksRight">Looks right</button><a class="link" href="#/me">Update it</a></p>';
+    return '<p class="nudge" id="nudge">Is your profile still right? <button class="link" type="button" id="looksRight">Looks right</button><a class="link" href="me">Update it</a></p>';
   }
 
   function wireMembers(params) {
@@ -147,7 +147,7 @@
 
   App.profileSheet = profileSheet;
   App.openProfile = openProfile;
-  App.route('#/members', {
+  App.route('members', {
     page: pageMembers, wire: wireMembers, member: true,
     onData: function () { if (page_draw && $('#results')) page_draw(); }
   });
