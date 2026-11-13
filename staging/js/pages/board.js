@@ -5,7 +5,7 @@
   var PLURAL = { job: 'Jobs', opportunity: 'Opportunities', ask: 'Asks', resource: 'Resources', partner: 'From partners' };
 
   function pageBoard() {
-    return page('<div class="page-head"><h1>Board</h1><span class="count" id="boardCount"></span><span class="spacer"></span><a class="link" href="#/post-edit">Post something</a></div>' +
+    return page('<div class="page-head"><h1>Board</h1><span class="count" id="boardCount"></span><span class="spacer"></span><a class="link" href="post-edit">Post something</a></div>' +
       '<div class="search-row">' + App.icon('search') + '<label class="sr-only" for="boardQ">Search the board</label><input class="search" type="search" id="boardQ" aria-label="Search the board" placeholder="Search jobs, companies, anything" value="' + esc(state.board.q) + '" dir="auto" autocomplete="off"></div>' +
       '<div class="filters" id="boardKinds"></div><div id="boardList"></div>');
   }
@@ -15,7 +15,7 @@
   }
 
   function postHtml(p) {
-    var link = App.siteLink('#/board?p=' + p.id);
+    var link = App.siteLink('board?p=' + p.id);
     var share = (Core.POST_KINDS[p.kind] || '') + ': ' + p.title + '\n' + link;
     var closed = p.status !== 'open' || p.expired;
     return '<article class="post" data-post="' + esc(p.id) + '" id="p-' + esc(p.id) + '"><div class="tags"><span class="tag">' + esc(Core.POST_KINDS[p.kind] || p.kind) + '</span>' +
@@ -24,10 +24,10 @@
       (p.company || p.location ? '<p class="muted ph-sensitive" dir="auto">' + esc([p.company, p.location].filter(Boolean).join(', ')) + '</p>' : '') +
       (p.body ? '<p class="details ph-sensitive" dir="auto">' + esc(p.body) + '</p>' : '') +
       (p.contact ? '<p dir="auto"><b>Contact:</b> <span class="ph-sensitive">' + esc(p.contact) + '</span></p>' : '') +
-      '<p class="muted small">Posted by <a class="person-link" href="#/members?m=' + esc(p.author.id) + '" dir="auto">' + esc(p.author.name) + '</a> on ' + esc(Core.shortDate(new Date(p.created_at).toLocaleDateString('en-CA', { timeZone: Core.TIME_ZONE }))) + '</p>' +
+      '<p class="muted small">Posted by <a class="person-link" href="members?m=' + esc(p.author.id) + '" dir="auto">' + esc(p.author.name) + '</a> on ' + esc(Core.shortDate(new Date(p.created_at).toLocaleDateString('en-CA', { timeZone: Core.TIME_ZONE }))) + '</p>' +
       '<div class="row-actions">' + (p.link ? '<a class="btn quiet small" href="' + esc(p.link) + '" target="_blank" rel="noopener">Open the link</a>' : '') +
       '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a>' +
-      (p.can_edit ? '<a class="link" href="#/post-edit?p=' + esc(p.id) + '">Edit</a><button class="link" data-close-post>' + (closed ? 'Bring it back' : 'Close it') + '</button>' : '') + '</div></article>';
+      (p.can_edit ? '<a class="link" href="post-edit?p=' + esc(p.id) + '">Edit</a><button class="link" data-close-post>' + (closed ? 'Bring it back' : 'Close it') + '</button>' : '') + '</div></article>';
   }
 
   function drawBoard() {
@@ -90,7 +90,7 @@
     var kinds = Object.keys(Core.POST_KINDS).filter(function (k) { return Core.canPostKind(k, state.me.tier); });
     var cohorts = Array.from(new Set(state.data.directory.members.map(function (m) { return m.cohort; }).filter(Boolean))).sort();
     var audiences = leader ? [['all', 'Everyone'], ['club', 'Club'], ['community', 'Community']].concat(cohorts.map(function (c) { return ['cohort:' + c, cohortLabel(c)]; })) : [['all', 'Everyone'], [state.me.tier, TIER_LABEL[state.me.tier]]];
-    return page('<p class="back"><a class="link" href="#/board">Back to the board</a></p><h1>' + (id ? 'Edit the post' : 'Post something') + '</h1>' +
+    return page('<p class="back"><a class="link" href="board">Back to the board</a></p><h1>' + (id ? 'Edit the post' : 'Post something') + '</h1>' +
       '<form class="form-grid event-form" id="postForm" novalidate style="margin-top:24px">' +
       '<div class="form-row"><label>What is it<select name="kind">' + kinds.map(function (k) { return '<option value="' + k + '" ' + (p.kind === k ? 'selected' : '') + '>' + esc(Core.POST_KINDS[k]) + '</option>'; }).join('') + '</select></label>' +
       '<label>Who it\'s for<select name="audience">' + audiences.map(function (a) { return '<option value="' + esc(a[0]) + '" ' + (p.audience === a[0] ? 'selected' : '') + '>' + esc(a[1]) + '</option>'; }).join('') + '</select></label></div>' +
@@ -124,12 +124,12 @@
         state.board.q = '';
         state.board.kind = '';
         toast('Posted');
-        go('#/board');
+        go('board');
       } catch (err) { setBusy(btn, false); showErrors(f, err); }
     });
   }
 
   // Leaders only for now, through the portal-board flag in PostHog: there are no job boards yet.
-  App.route('#/board', { page: pageBoard, wire: wireBoard, member: true, onData: drawBoard, flag: 'portal-board' });
-  App.route('#/post-edit', { page: pageEdit, wire: wireEdit, member: true, flag: 'portal-board' });
+  App.route('board', { page: pageBoard, wire: wireBoard, member: true, onData: drawBoard, flag: 'portal-board' });
+  App.route('post-edit', { page: pageEdit, wire: wireEdit, member: true, flag: 'portal-board' });
 })();

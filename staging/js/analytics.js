@@ -16,31 +16,17 @@ var Analytics = (function () {
   var EMAIL = /[^\s@\/?#&=:"'<>]+(?:@|%40)[^\s@\/?#&="'<>]+\.[a-z]{2,}/gi;
   var PHONE = /\+?\d[\d\s().-]{7,}\d/g;
   function longNumber(m) { return m.replace(/\D/g, '').length >= 9 ? '[number]' : m; }
-  // Properties PostHog fills from the page's address, which can carry a hash route's query.
+  // Properties PostHog fills from the page's address, whose query can carry an email.
   var URL_KEYS = ['$current_url', '$pathname', '$referrer', '$initial_current_url', '$session_entry_url', '$prev_pageview_pathname', '$external_click_url', '$initial_referrer', 'title'];
   // Properties autocapture fills from what was clicked.
   var TEXT_KEYS = ['$el_text', '$elements_chain'];
 
-  // The code in a sign-in link (/signin#e=...&c=123456) is as good as a password for 10 minutes.
-  function cleanUrl(s) { return String(s).replace(EMAIL, '[email]').replace(/([?&#]c=)\d+/g, '$1[code]'); }
+  function cleanUrl(s) { return String(s).replace(EMAIL, '[email]'); }
   function cleanText(s) { return cleanUrl(s).replace(PHONE, longNumber); }
 
   function cleanProps(props, keys, fn) {
     if (!props) return;
     keys.forEach(function (k) { if (typeof props[k] === 'string') props[k] = fn(props[k]); });
-  }
-
-  // The page, named like #/event without its query, as it was before addresses dropped the #.
-  // Every event carries it, so insights can break down by page across the change (F108).
-  var BASE = (typeof document !== 'undefined' && document.baseURI) ? new URL(document.baseURI).pathname : '/';
-  function routeOf(url) {
-    var s = String(url || '');
-    var hash = s.split('#')[1];
-    if (hash && hash.charAt(0) === '/') return '#' + hash.split('?')[0];
-    var p;
-    try { p = new URL(s).pathname; } catch (e) { return '#/'; }
-    if (p.indexOf(BASE) === 0) p = p.slice(BASE.length);
-    return '#/' + p.replace(/\/$/, '');
   }
 
   // Runs on every event just before it leaves the browser.
@@ -50,7 +36,6 @@ var Analytics = (function () {
     cleanProps(p, URL_KEYS, cleanUrl);
     cleanProps(p, TEXT_KEYS, cleanText);
     if (p && Array.isArray(p.$elements)) p.$elements.forEach(function (el) { cleanProps(el, ['$el_text', 'attr__href'], cleanText); });
-    if (p && p.$current_url) p.route = routeOf(p.$current_url);
     cleanProps(event.$set, URL_KEYS, cleanUrl);
     cleanProps(event.$set_once, URL_KEYS, cleanUrl);
     return event;
@@ -74,10 +59,6 @@ var Analytics = (function () {
     defaults: '2026-08-30',
     // Only signed-in members get a person profile; visitors stay anonymous.
     person_profiles: 'identified_only',
-    // A pageview is one change of address, path or (for old links) hash. These defaults
-    // strip hashes from URLs, so that's turned back off; scrub() cleans what the hash carries.
-    capture_pageview: { path: true, hash: true },
-    disable_capture_url_hashes: false,
     capture_pageleave: true,
     autocapture: true,
     capture_heatmaps: true,

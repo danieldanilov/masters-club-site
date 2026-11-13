@@ -75,24 +75,19 @@ var App = (function () {
   }
   /* ---------- addresses ---------- */
 
-  // Pages have plain addresses (/meetings?m=x) under the site's base: / live, /staging/ on
-  // staging, from the <base> tag the build writes. Inside the code a page is still named
-  // '#/meetings?m=x', the same as App.route uses, and these turn one into the other (F108).
+  // A page is named by its address under the site's base (/ live, /staging/ on staging, from the
+  // <base> the build writes): 'meetings?m=x', and '' for home. Links are written the same way,
+  // href="meetings", and resolve against the base from any page (F108).
   var BASE = new URL(document.baseURI).pathname;
   function toPath(route) {
-    return BASE + String(route).replace(/^#\//, '');
+    return BASE + route;
+  }
+  function routeAt(url) {
+    var p = url.pathname.indexOf(BASE) === 0 ? url.pathname.slice(BASE.length) : '';
+    return p.replace(/(^|\/)index\.html$/, '').replace(/\/$/, '') + url.search;
   }
   function currentRoute() {
-    var p = location.pathname.indexOf(BASE) === 0 ? location.pathname.slice(BASE.length) : '';
-    return '#/' + p.replace(/(^|\/)index\.html$/, '').replace(/\/$/, '') + location.search;
-  }
-  // An old link (#/meetings) or one from an email sent before the change moves to its plain address.
-  function adoptOldLink() {
-    if (location.hash.indexOf('#/') === 0) history.replaceState(null, '', toPath(location.hash));
-  }
-  // Every #/ link the pages write becomes a plain one, whenever it's drawn.
-  function plainLinks(root) {
-    $$('a[href^="#/"]', root).forEach(function (a) { a.setAttribute('href', toPath(a.getAttribute('href'))); });
+    return routeAt(location);
   }
   // A click on a link inside the site changes the page without reloading it.
   function followLink(e) {
@@ -102,7 +97,7 @@ var App = (function () {
     var url = new URL(a.href, document.baseURI);
     if (url.origin !== location.origin || url.pathname.indexOf(BASE) !== 0 || /\.[a-z0-9]+$/i.test(url.pathname)) return;
     e.preventDefault();
-    go('#/' + url.pathname.slice(BASE.length).replace(/\/$/, '') + url.search);
+    go(routeAt(url));
   }
 
   // A page that sends people elsewhere while it's being drawn gets the new page after it
@@ -324,15 +319,15 @@ var App = (function () {
       toast('Welcome, ' + r.me.name.split(' ')[0]);
       var intended = readJson('sessionStorage', INTENDED_KEY);
       writeJson('sessionStorage', INTENDED_KEY, null);
-      go(intended || (r.me.first ? '#/me' : '#/members'));
+      go(intended || (r.me.first ? 'me' : 'members'));
     } else if (r.status === 'inactive') {
       Analytics.track('sign in failed', { method: method, reason: 'inactive' });
-      go('#/denied?e=' + encodeURIComponent(r.email));
+      go('denied?e=' + encodeURIComponent(r.email));
     } else {
       Analytics.track('sign in failed', { method: method, reason: 'not_on_list' });
       Api.setGuest(r.guest);
       state.guest = { email: r.email, name: r.name, request: r.request };
-      go('#/request');
+      go('request');
     }
   }
 
@@ -432,7 +427,7 @@ var App = (function () {
     state.guest = null;
     setPendingCode(null);
     toast('Signed out');
-    go('#/');
+    go('');
   }
 
   Api.onSignedOut(function () {
@@ -444,15 +439,15 @@ var App = (function () {
   /* ---------- nav ---------- */
 
   function renderNav(route) {
-    var links = [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners']];
+    var links = [['about', 'About'], ['meetings', 'Meetings'], ['partners', 'Partners']];
     if (state.me) {
-      links = [['#/members', 'Directory'], ['#/events', 'Events'], ['#/board', 'Board'], ['#/me', 'My profile']].filter(function (l) { return routeOn(l[0]); });
-      if (state.me.tier === 'leader') links.push(['#/admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
+      links = [['members', 'Directory'], ['events', 'Events'], ['board', 'Board'], ['me', 'My profile']].filter(function (l) { return routeOn(l[0]); });
+      if (state.me.tier === 'leader') links.push(['admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
     }
     // Signed in, the public pages step back to the footer.
-    $('#footLinks').innerHTML = state.me ? [['#/about', 'About'], ['#/meetings', 'Meetings'], ['#/partners', 'Partners'], ['#/join', 'Join']].map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('') : '';
+    $('#footLinks').innerHTML = state.me ? [['about', 'About'], ['meetings', 'Meetings'], ['partners', 'Partners'], ['join', 'Join']].map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('') : '';
     var html = links.map(function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; }).join('');
-    html += state.me ? '<a href="#/" data-signout>Sign out</a>' : '<a href="#/join" class="btn gold small">Sign in</a>';
+    html += state.me ? '<a href="./" data-signout>Sign out</a>' : '<a href="join" class="btn gold small">Sign in</a>';
     $('#nav').innerHTML = html;
     var so = $('[data-signout]');
     if (so) so.addEventListener('click', function (e) { e.preventDefault(); signOut(); });
@@ -519,19 +514,19 @@ var App = (function () {
 
   function render() {
     var at = routeOf();
-    var r = routes[at.route] || routes['#/'];
+    var r = routes[at.route] || routes[''];
     // Signed in, a flagged page that's off opens Home, like an address that doesn't exist.
-    if (r.flag && state.me && !routeOn(at.route)) r = routes['#/'];
+    if (r.flag && state.me && !routeOn(at.route)) r = routes[''];
     renderNav(at.route);
     setMenu(false);
     closeSheet();
     var app = $('#app');
     if (r.member && !state.me) {
       // A link from WhatsApp opens the right page after sign-in. The plain directory is the default anyway.
-      if (currentRoute() !== '#/members') writeJson('sessionStorage', INTENDED_KEY, currentRoute());
+      if (currentRoute() !== 'members') writeJson('sessionStorage', INTENDED_KEY, currentRoute());
       var asking = Api.guest() && state.guest;
-      app.innerHTML = asking ? routes['#/request'].page(at.params) : routes['#/join'].page(new URLSearchParams(), { gated: true });
-      var shown = routes[asking ? '#/request' : '#/join'];
+      app.innerHTML = asking ? routes['request'].page(at.params) : routes['join'].page(new URLSearchParams(), { gated: true });
+      var shown = routes[asking ? 'request' : 'join'];
       if (shown.wire) shown.wire(at.params);
     } else if (r.member && !state.data) {
       app.innerHTML = loading('Opening the club');
@@ -576,12 +571,8 @@ var App = (function () {
 
   function start() {
     $('#menuBtn').addEventListener('click', function () { setMenu(!$('#nav').classList.contains('open')); });
-    adoptOldLink();
-    plainLinks(document);
-    new MutationObserver(function () { plainLinks(document); }).observe(document.body, { childList: true, subtree: true });
     document.addEventListener('click', followLink);
     window.addEventListener('popstate', render);
-    window.addEventListener('hashchange', function () { if (location.hash.indexOf('#/') === 0) { adoptOldLink(); render(); } });
     if (CONFIG.ENV !== 'production') $('#envNote').textContent = CONFIG.ENV + ' build with test data';
     if (!state.publicInfo) state.publicInfo = readJson('localStorage', PUBLIC_KEY);
     refreshPublic();

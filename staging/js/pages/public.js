@@ -14,7 +14,7 @@
     return '<section class="hero"><div class="tie" aria-hidden="true"></div><div class="wrap">' +
       '<h1>The Masters Club</h1>' +
       '<p class="lead">' + esc(c.tagline) + '</p>' +
-      '<div class="actions on-navy"><a class="btn gold" href="#/join?apply">Apply for the next cohort</a><a class="link" href="#/partners">Partner with us</a></div>' +
+      '<div class="actions on-navy"><a class="btn gold" href="join?apply">Apply for the next cohort</a><a class="link" href="partners">Partner with us</a></div>' +
       '</div></section>' +
       '<div class="wrap">' +
       '<section class="split"><h2>A club and a community</h2><dl>' +
@@ -22,13 +22,13 @@
       '<div><dt>The community</dt><dd>' + esc(c.community) + '</dd></div>' +
       '</dl></section></div>' +
       '<section class="statement"><div class="wrap"><p>' + esc(c.giveFirst) + ' <span>' + esc(c.giveFirstRest) + '</span></p></div></section>' +
-      '<div class="wrap"><section class="past"><div class="past-head"><h2>In the past</h2><a class="link" href="#/meetings">All meetings</a></div>' +
+      '<div class="wrap"><section class="past"><div class="past-head"><h2>In the past</h2><a class="link" href="meetings">All meetings</a></div>' +
       '<div class="rail">' + c.meetings.map(function (mt) {
-        return '<a href="#/meetings?m=' + esc(mt.id) + '"><img src="' + esc(mt.poster) + '" alt="" loading="lazy" width="640" height="800">' +
+        return '<a href="meetings?m=' + esc(mt.id) + '"><img src="' + esc(mt.poster) + '" alt="" loading="lazy" width="640" height="800">' +
           '<span class="who">' + esc(mt.speaker) + '</span><span class="when">' + esc(longDate(mt.date)) + '</span></a>';
       }).join('') + '</div></section>' +
       (coming.length ? '<section class="coming"><div class="past-head"><h2>In the future</h2>' +
-        (state.me ? '<a class="link" href="#/events">All events</a>' : '<a class="link" href="#/join">How to join</a>') + '</div>' +
+        (state.me ? '<a class="link" href="events">All events</a>' : '<a class="link" href="join">How to join</a>') + '</div>' +
         coming.map(function (m) {
           return '<div class="event-row"><div class="date" aria-label="' + esc(m.day + ' ' + m.month) + '"><b>' + esc(m.day) + '</b><span>' + esc(m.month.slice(0, 3)) + '</span></div>' +
             '<span class="body"><h3 class="title" dir="auto">' + esc(m.title) + '</h3><span class="muted" dir="auto">' + esc(m.note) + '</span></span></div>';
@@ -83,7 +83,7 @@
   // The last card: an open invitation in the club's colours, leading to the form.
   function inviteCard() {
     var c = CONTENT.partnerInvite;
-    return '<a class="partner-card partner-invite" href="#/partners" data-to-form><div class="partner-logo"><span class="partner-wordmark">Your company</span></div>' +
+    return '<a class="partner-card partner-invite" href="partners" data-to-form><div class="partner-logo"><span class="partner-wordmark">Your company</span></div>' +
       '<div class="partner-body"><h3 class="name">' + esc(c.title) + '</h3><p class="muted">' + esc(c.note) + '</p><span class="link">Get in touch</span></div></a>';
   }
 
@@ -148,7 +148,7 @@
       '<dl class="path-gets"><div><dt>The club</dt><dd>' + esc(CONTENT.club) + '</dd></div><div><dt>The community</dt><dd>' + esc(CONTENT.community) + '</dd></div></dl></div>' +
       '<div class="tie-field" aria-hidden="true"></div></section>' +
       '<section class="path-signin banded"><h2>Already a member?</h2>' +
-      (me ? '<p class="muted">You\'re signed in as ' + esc(me.name) + '.</p><a class="btn navy" href="#/members">Go to the directory</a>'
+      (me ? '<p class="muted">You\'re signed in as ' + esc(me.name) + '.</p><a class="btn navy" href="members">Go to the directory</a>'
         : '<p class="muted">Current cohort or alumni: enter your email and we\'ll send you a link that signs you in. No password, and you stay signed in.</p>' + signInBlock()) +
       '</section></div>');
   }
@@ -158,18 +158,17 @@
   // The address and code leave the address bar at once, so they stay out of history (F104).
   var linkCode = null;
   function pageSignIn(params) {
-    // The link puts them after a # (signin#e=...&c=...), so they never reach a server's logs;
-    // a link from before the change has them in the query.
-    var got = location.hash.charAt(1) === 'e' ? new URLSearchParams(location.hash.slice(1)) : params;
+    // The link puts them after a # (signin#e=...&c=...), so they never reach a server's logs.
+    var got = new URLSearchParams(location.hash.slice(1));
     if (got.get('e') && got.get('c')) {
       linkCode = { email: Core.normalizeEmail(got.get('e')), code: String(got.get('c')) };
-      history.replaceState(null, '', App.toPath('#/signin'));
+      history.replaceState(null, '', App.toPath('signin'));
     }
-    if (!linkCode) { go('#/join'); return ''; }
+    if (!linkCode) { go('join'); return ''; }
     return page('<div class="panel"><div class="inner"><h1>Sign in to the club</h1>' +
       '<p class="muted">You\'re signing in as <b class="ph-sensitive">' + esc(linkCode.email) + '</b>.</p>' +
       '<form class="code-form" id="linkForm" novalidate><button class="btn gold" type="submit">Sign in</button>' +
-      '<div class="code-links"><a class="link" href="#/join">Use another email</a></div></form></div></div>');
+      '<div class="code-links"><a class="link" href="join">Use another email</a></div></form></div></div>');
   }
 
   function wireSignIn() {
@@ -190,7 +189,7 @@
         setBusy(btn, false);
         showErrors(f, err);
         if (err.code === 'invalid') {
-          $('.code-links', f).innerHTML = '<a class="link" href="#/join" data-new-link>Send a new link</a>';
+          $('.code-links', f).innerHTML = '<a class="link" href="join" data-new-link>Send a new link</a>';
           $('[data-new-link]', f).addEventListener('click', function () { App.forgetCode(); linkCode = null; });
         }
       }
@@ -213,7 +212,7 @@
         '<button class="btn quiet" data-signout-guest>Use another account</button></div></div>');
     }
     return page('<div class="panel"><div class="inner"><h1>We don\'t have this email yet</h1>' +
-      '<p class="muted">You signed in as <b class="ph-sensitive">' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name. Not in one yet? <a class="link" href="#/join?apply">Apply to a cohort</a>.</p>' +
+      '<p class="muted">You signed in as <b class="ph-sensitive">' + esc(g.email) + '</b>, which isn\'t on the members list. If you\'re in a cohort, send this and a leader will link it to your name. Not in one yet? <a class="link" href="join?apply">Apply to a cohort</a>.</p>' +
       '<form class="form-grid" id="requestForm" novalidate style="margin-top:24px">' +
       '<label>Your full name<input type="text" name="name" maxlength="60" required dir="auto" value="' + esc(g.name) + '"><span class="field-error" data-err="name"></span></label>' +
       '<label>Anything that helps us find you <span class="hint">Your cohort, or the name you use on WhatsApp</span><textarea name="note" maxlength="280" rows="2" dir="auto"></textarea><span class="field-error" data-err="note"></span></label>' +
@@ -222,7 +221,7 @@
 
   function wireRequest() {
     if (!$('[data-signout-guest]')) return;
-    $$('[data-signout-guest]').forEach(function (b) { b.addEventListener('click', function () { Api.setGuest(null); state.guest = null; go('#/members'); }); });
+    $$('[data-signout-guest]').forEach(function (b) { b.addEventListener('click', function () { Api.setGuest(null); state.guest = null; go('members'); }); });
     var f = $('#requestForm');
     if (!f) return;
     f.addEventListener('submit', async function (e) {
@@ -254,12 +253,12 @@
     if (target) { target.scrollIntoView(); return 'keep-scroll'; }
   }
 
-  App.route('#/', { page: pageHome, isPublic: true });
-  App.route('#/about', { page: pageAbout, isPublic: true });
-  App.route('#/meetings', { page: pageMeetings, wire: wireMeetings, isPublic: true });
-  App.route('#/partners', { page: pagePartners, wire: wirePartners, isPublic: true });
-  App.route('#/join', { page: pageJoin, wire: wireJoin, isPublic: true });
-  App.route('#/request', { page: pageRequest, wire: wireRequest });
-  App.route('#/signin', { page: pageSignIn, wire: wireSignIn, isPublic: true });
-  App.route('#/denied', { page: function (params) { return pageDenied(params.get('e')); } });
+  App.route('', { page: pageHome, isPublic: true });
+  App.route('about', { page: pageAbout, isPublic: true });
+  App.route('meetings', { page: pageMeetings, wire: wireMeetings, isPublic: true });
+  App.route('partners', { page: pagePartners, wire: wirePartners, isPublic: true });
+  App.route('join', { page: pageJoin, wire: wireJoin, isPublic: true });
+  App.route('request', { page: pageRequest, wire: wireRequest });
+  App.route('signin', { page: pageSignIn, wire: wireSignIn, isPublic: true });
+  App.route('denied', { page: function (params) { return pageDenied(params.get('e')); } });
 })();

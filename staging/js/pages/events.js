@@ -24,7 +24,7 @@
   /* ---------- the list ---------- */
 
   function pageEvents() {
-    return page('<div class="page-head"><h1>Events</h1><span class="spacer"></span><a class="link" href="#/event-edit">Post an event</a></div><div id="eventList"></div>');
+    return page('<div class="page-head"><h1>Events</h1><span class="spacer"></span><a class="link" href="event-edit">Post an event</a></div><div id="eventList"></div>');
   }
 
   function drawList() {
@@ -33,7 +33,7 @@
     var next = all.filter(function (e) { return e.date >= today; });
     var past = all.filter(function (e) { return e.date < today; }).reverse();
     var row = function (e) {
-      return '<a class="event-row" href="#/event?e=' + esc(e.id) + '">' + dateBlock(e) + '<span class="body"><h2 class="title" dir="auto">' + esc(e.title) + '</h2>' +
+      return '<a class="event-row" href="event?e=' + esc(e.id) + '">' + dateBlock(e) + '<span class="body"><h2 class="title" dir="auto">' + esc(e.title) + '</h2>' +
         '<span class="muted" dir="auto">' + esc(Core.weekday(e.date)) + ' at ' + esc(e.time) + (e.place ? ', ' + esc(e.place) : '') + '</span>' +
         '<span class="tags"><span class="tag">' + esc(Core.EVENT_KINDS[e.kind] || e.kind) + '</span>' + statusLine(e) + '</span></span></a>';
     };
@@ -45,8 +45,8 @@
 
   function pageEvent(params) {
     var e = find(params.get('e'));
-    if (!e) return page('<div class="note warn">This event isn\'t here. It may be for another group, or it has passed.</div><p style="margin-top:16px"><a class="link" href="#/events">All events</a></p>');
-    return page('<p class="back"><a class="link" href="#/events">All events</a></p><div id="eventBody">' + eventHtml(e) + '</div>');
+    if (!e) return page('<div class="note warn">This event isn\'t here. It may be for another group, or it has passed.</div><p style="margin-top:16px"><a class="link" href="events">All events</a></p>');
+    return page('<p class="back"><a class="link" href="events">All events</a></p><div id="eventBody">' + eventHtml(e) + '</div>');
   }
 
   function seatNote(e) {
@@ -58,7 +58,7 @@
   }
 
   function eventHtml(e) {
-    var link = App.siteLink('#/event?e=' + e.id);
+    var link = App.siteLink('event?e=' + e.id);
     var share = e.title + '\n' + Core.shortDate(e.date) + ', ' + e.time + (e.place ? ', ' + e.place : '') + '\n' + link;
     var signup = '';
     if (e.status !== 'cancelled') {
@@ -86,11 +86,11 @@
       '<button class="btn quiet small" data-ics>Apple or Outlook</button>' +
       '<a class="btn quiet small" href="' + esc(Core.whatsappUrl(share)) + '" target="_blank" rel="noopener" data-share>Share on WhatsApp</a></div></div>' +
       '<aside class="event-side"><h2 class="sub">Who\'s coming</h2>' +
-      (e.going_count ? '<p>' + e.attendees.map(function (a) { return '<a class="person-link" href="#/members?m=' + esc(a.id) + '" dir="auto">' + esc(a.name) + '</a>'; }).join(', ') +
+      (e.going_count ? '<p>' + e.attendees.map(function (a) { return '<a class="person-link" href="members?m=' + esc(a.id) + '" dir="auto">' + esc(a.name) + '</a>'; }).join(', ') +
         (others > 0 ? (e.attendees.length ? ' and ' : '') + others + ' more' : '') + '</p>' : '<p class="muted">Nobody yet.</p>') +
       (e.waitlist_count ? '<p class="muted">' + e.waitlist_count + ' on the waitlist</p>' : '') +
       (e.owners.length ? '<p class="muted">Run by ' + esc(e.owners.map(function (o) { return o.name; }).join(', ')) + '</p>' : '') +
-      (e.can_manage ? '<div class="row-actions" style="margin-top:28px"><a class="link" href="#/event-roster?e=' + esc(e.id) + '">Manage sign-ups</a><a class="link" href="#/event-edit?e=' + esc(e.id) + '">Edit</a>' +
+      (e.can_manage ? '<div class="row-actions" style="margin-top:28px"><a class="link" href="event-roster?e=' + esc(e.id) + '">Manage sign-ups</a><a class="link" href="event-edit?e=' + esc(e.id) + '">Edit</a>' +
         '<button class="link" data-cancel>' + (e.status === 'cancelled' ? 'Bring it back' : 'Cancel the event') + '</button></div>' : '') + '</aside></div>';
   }
 
@@ -118,7 +118,7 @@
       $('[data-share]', box).addEventListener('click', function () { Analytics.track('event shared', { event_id: e.id }); });
       $('[data-ics]', box).addEventListener('click', function () {
         Analytics.track('calendar added', { event_id: e.id, calendar: 'file' });
-        App.downloadFile(e.id + '.ics', 'text/calendar;charset=utf-8', Core.toIcs(find(e.id), App.siteLink('#/event?e=' + e.id)));
+        App.downloadFile(e.id + '.ics', 'text/calendar;charset=utf-8', Core.toIcs(find(e.id), App.siteLink('event?e=' + e.id)));
       });
       var c = $('[data-cancel]', box);
       if (c) c.addEventListener('click', async function () {
@@ -149,7 +149,7 @@
     var kinds = Object.keys(Core.EVENT_KINDS).filter(function (k) { return leader || k !== 'meeting'; });
     var cohorts = Array.from(new Set(state.data.directory.members.map(function (m) { return m.cohort; }).filter(Boolean))).sort();
     var audiences = leader ? ['all', 'club', 'community'].concat(cohorts.map(function (c) { return 'cohort:' + c; })).concat(['leaders']) : ['all', state.me.tier];
-    return page('<p class="back"><a class="link" href="' + (id ? '#/event?e=' + esc(id) : '#/events') + '">Back</a></p><h1>' + (id ? 'Edit the event' : 'Post an event') + '</h1>' +
+    return page('<p class="back"><a class="link" href="' + (id ? 'event?e=' + esc(id) : 'events') + '">Back</a></p><h1>' + (id ? 'Edit the event' : 'Post an event') + '</h1>' +
       (!leader && !id ? '<p class="lead measure" style="margin-top:12px">A bar, a run, a group going to something outside. Anyone in the club can get something going.</p>' : '') +
       '<form class="form-grid event-form" id="eventForm" novalidate style="margin-top:24px">' +
       field('Title', 'title', 'text', 'maxlength="120" required dir="auto"') +
@@ -197,7 +197,7 @@
         state.data.events.sort(function (a, b) { return (a.date + a.time).localeCompare(b.date + b.time); });
         App.saveData();
         toast('Saved');
-        go('#/event?e=' + r.event.id);
+        go('event?e=' + r.event.id);
       } catch (err) { setBusy(btn, false); showErrors(f, err); }
     });
   }
@@ -207,7 +207,7 @@
   function pageRoster(params) {
     var e = find(params.get('e'));
     if (!e) return page('<div class="note warn">This event isn\'t here.</div>');
-    return page('<p class="back"><a class="link" href="#/event?e=' + esc(e.id) + '">Back to the event</a></p><div class="page-head"><h1 dir="auto">' + esc(e.title) + '</h1><span class="spacer"></span>' +
+    return page('<p class="back"><a class="link" href="event?e=' + esc(e.id) + '">Back to the event</a></p><div class="page-head"><h1 dir="auto">' + esc(e.title) + '</h1><span class="spacer"></span>' +
       '<button class="btn quiet small" data-groups>Make groups</button><button class="btn quiet small" data-copy>Copy the names</button></div>' +
       '<p class="muted">' + esc(when(e)) + '</p><div id="roster">' + App.loading('Loading sign-ups') + '</div>' +
       (state.me.tier === 'leader' ? '<section class="roster-add"><label>Add someone who called<select id="addWho"><option value="">Choose a member</option>' + state.data.directory.members.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; }).join('') + '</select></label><button class="btn quiet small" data-add>Add</button></section>' : ''));
@@ -270,8 +270,8 @@
     });
   }
 
-  App.route('#/events', { page: pageEvents, wire: drawList, member: true, onData: function () { if ($('#eventList')) drawList(); } });
-  App.route('#/event', { page: pageEvent, wire: wireEvent, member: true, onData: function (params) { if ($('#eventBody') && find(params.get('e'))) { $('#eventBody').innerHTML = eventHtml(find(params.get('e'))); wireEvent(params); } } });
-  App.route('#/event-edit', { page: pageEdit, wire: wireEdit, member: true });
-  App.route('#/event-roster', { page: pageRoster, wire: wireRoster, member: true });
+  App.route('events', { page: pageEvents, wire: drawList, member: true, onData: function () { if ($('#eventList')) drawList(); } });
+  App.route('event', { page: pageEvent, wire: wireEvent, member: true, onData: function (params) { if ($('#eventBody') && find(params.get('e'))) { $('#eventBody').innerHTML = eventHtml(find(params.get('e'))); wireEvent(params); } } });
+  App.route('event-edit', { page: pageEdit, wire: wireEdit, member: true });
+  App.route('event-roster', { page: pageRoster, wire: wireRoster, member: true });
 })();
