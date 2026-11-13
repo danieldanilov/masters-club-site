@@ -193,6 +193,14 @@
         checkStep(flow, email);
         $('input[name=code]', flow).focus();
       } catch (err) {
+        // An email went out a little while ago: its code may still work, so go to the code step
+        // and say when a new one can be sent.
+        if (err.code === 'limited') {
+          Analytics.identify({ id: email, email: email });
+          if (!App.pendingCode()) App.setPendingCode(email, Core.CODE_LIMITS.waitsMs.length);
+          checkStep(flow, email, err.message);
+          return;
+        }
         Analytics.track('sign in failed', { method: 'email', reason: err.code });
         setBusy(btn, false);
         showErrors(f, err);
@@ -202,7 +210,7 @@
 
   // The same screen for everyone who gave an email: the code for members, the application for
   // everyone else.
-  function checkStep(flow, email) {
+  function checkStep(flow, email, waitNote) {
     var s = info().settings || {};
     var open = s.applications_open !== false;
     var minutes = Math.round(Core.CODE_LIMITS.ttlMs / 60000);
@@ -237,6 +245,7 @@
       emailStep(flow);
     });
     resendButton(flow, email);
+    if (waitNote) $('[data-resend-note]', flow).textContent = waitNote;
   }
 
   // "Send a new code" opens once the wait since the last email is over: a minute, then longer
