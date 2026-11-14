@@ -5,9 +5,8 @@
 // What's tracked and how to add an event: docs/02-architecture.md, "Analytics".
 var Analytics = (function () {
   var on = !!(typeof CONFIG !== 'undefined' && CONFIG.POSTHOG_KEY && (CONFIG.ENV === 'production' || CONFIG.ENV === 'staging'));
-  // The flag override's key, with the environment's prefix like every stored key (F92).
-  var PREFIX = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_PREFIX) || '';
-  var FLAGS_KEY = PREFIX + 'mc-flags-v1';
+  // The flag override's key, for local work and staging.
+  var FLAGS_KEY = 'mc-flags-v1';
 
   /* ---------- keeping personal details out of events ---------- */
 
@@ -57,7 +56,8 @@ var Analytics = (function () {
   var options = {
     api_host: on ? CONFIG.POSTHOG_HOST : '',
     defaults: '2026-08-30',
-    // Only signed-in members get a person profile; visitors stay anonymous.
+    // Visitors stay anonymous. A person profile starts when someone gives their email on Join or
+    // signs in (identify below).
     person_profiles: 'identified_only',
     capture_pageleave: true,
     autocapture: true,
@@ -84,6 +84,10 @@ var Analytics = (function () {
   function ph() { return on && window.posthog; }
   // Who this page load has named, until posthog-js has loaded and can say itself.
   var named = null;
+  // The member id this browser is named as, or null while it's anonymous.
+  function member() {
+    return posthog.__loaded && typeof posthog.get_distinct_id === 'function' && posthog.get_property('$user_state') === 'identified' ? posthog.get_distinct_id() : named;
+  }
 
   /* ---------- what the site calls ---------- */
 
@@ -99,13 +103,19 @@ var Analytics = (function () {
       if (ph()) posthog.capture(name, props || {});
     },
 
-    // A signed-in member, by their stable id from the Members tab.
-    // Names this browser's person: a member by their id from the Members tab, with name, email,
-    // tier and cohort; someone who only gave an email on Join by that email. Moving from one to
-    // the other starts a new person, so nobody's actions land on someone else (F109).
+    // Names this browser's person. A member, by their id from the Members tab, with name, email,
+    // tier and cohort. Someone who only gave an email (on Join, or by opening the link in the
+    // application email) keeps their anonymous id and gets that email as a property, so when they
+    // sign in the same visit becomes the member's and the sign-in funnel reads as one person
+    // (F123). A signed-in member is never renamed by an email, and moving from one member to
+    // another starts a new person, so nobody's actions land on someone else (F109).
     identify: function (who) {
-      if (!ph() || !who || !who.id) return;
-      var current = posthog.__loaded && typeof posthog.get_distinct_id === 'function' && posthog.get_property('$user_state') === 'identified' ? posthog.get_distinct_id() : named;
+      if (!ph() || !who) return;
+      var current = member();
+      if (!who.id) {
+        if (who.email && !current) posthog.setPersonProperties({ email: who.email });
+        return;
+      }
       if (current && current !== who.id) posthog.reset();
       var props = {};
       ['name', 'email', 'tier', 'cohort'].forEach(function (k) { if (who[k] !== undefined) props[k] = who[k]; });
@@ -126,8 +136,8 @@ var Analytics = (function () {
 
     // A feature flag: true, false, or a variant name. Until PostHog's flags arrive it's false, so
     // a flagged thing starts hidden and never flashes in for someone it's off for. Off the live
-    // site every flag is off, unless the override in localStorage (FLAGS_KEY: mc-flags-v1, or
-    // stg-mc-flags-v1 on staging) turns it on for local work and the tests: {"portal-board": true}.
+    // site every flag is off, unless the override in localStorage (FLAGS_KEY, mc-flags-v1) turns
+    // it on for local work, staging and the tests: {"portal-board": true}.
     // The live site ignores it.
     // onFlags runs once flags have loaded, and again whenever they change.
     flag: function (key) {

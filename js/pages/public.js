@@ -186,8 +186,8 @@
       setBusy(btn, true, 'Sending…');
       try {
         await Api.call('emailStart', { email: email }, { session: '' });
-        // They're named by the email they gave; signing in as a member names them by their row.
-        Analytics.identify({ id: email, email: email });
+        // This visit gets the email they gave; signing in as a member makes it that member's (F123).
+        Analytics.identify({ email: email });
         Analytics.track('sign in code sent');
         App.setPendingCode(email);
         checkStep(flow, email);
@@ -196,7 +196,7 @@
         // An email went out a little while ago: its code may still work, so go to the code step
         // and say when a new one can be sent.
         if (err.code === 'limited') {
-          Analytics.identify({ id: email, email: email });
+          Analytics.identify({ email: email });
           App.setPendingCode(email, 1, Date.now() + err.retryAfter * 1000);
           checkStep(flow, email, err.message);
           return;
@@ -303,7 +303,7 @@
   function wireTell() {
     var tell = $('#tellForm');
     if (!tell) return;
-    Analytics.identify({ id: tellEmail, email: tellEmail });
+    Analytics.identify({ email: tellEmail });
     tell.addEventListener('submit', async function (e) {
       e.preventDefault();
       var btn = $('button[type=submit]', tell);
@@ -330,7 +330,7 @@
   async function wireApply() {
     var got = new URLSearchParams(location.hash.slice(1));
     if (got.get('e')) {
-      Analytics.identify({ id: Core.normalizeEmail(got.get('e')), email: Core.normalizeEmail(got.get('e')) });
+      Analytics.identify({ email: Core.normalizeEmail(got.get('e')) });
       history.replaceState(null, '', App.toPath('apply'));
     }
     await App.refreshPublic();

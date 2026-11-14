@@ -15,21 +15,22 @@ var Core = (function () {
     club: { leader: true, club: true, community: true },
     community: { leader: true, club: true, community: true }
   };
-  // Sign-in codes sent by email. A code lasts 10 minutes and allows 5 tries. Each address gets
-  // a code at most every 30 seconds and 3 in 6 hours; addresses not on the list share 20 in
-  // 6 hours, and get none once the day's mail is down to the last 20 (kept for members). Access
-  // requests from guests share 10 in 6 hours, and leaders' notification emails stop at that reserve.
-  // Sign-in emails: a code lives 30 minutes; each new email to the same address waits longer than
-  // the last (F110), and a day with none starts the count again. quotaReserve is the day's mail
-  // kept for sign-in emails; requests and partner messages share a cap per window.
+  // Sign-in emails: a code lives 30 minutes and allows 5 tries; each new email to the same address
+  // waits longer than the last (F110), and a day with none starts the count again. quotaReserve is
+  // the day's mail kept for sign-in emails, and applicationsPerDay is the most application emails
+  // sent in a day to addresses not on the list (F118); requests and partner messages share a cap
+  // per window.
   var CODE_LIMITS = {
     ttlMs: 30 * 60 * 1000, maxTries: 5,
     waitsMs: [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000, 3 * 60 * 60 * 1000, 24 * 60 * 60 * 1000],
-    quietMs: 24 * 60 * 60 * 1000, quotaReserve: 20, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
+    quietMs: 24 * 60 * 60 * 1000, quotaReserve: 20, applicationsPerDay: 40, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
   };
   var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'hidden', 'bio', 'photo'];
   // Adding a kind of event or post is one line here; the forms and pages read these lists.
   var EVENT_KINDS = { meeting: 'Meeting', meetup: 'Meetup', dinner: 'Dinner', external: 'Outside event' };
+  // What only a leader sets on an event. The edit form shows these to leaders alone, and a save
+  // by anyone else keeps what the event already has (F120).
+  var EVENT_LEADER_FIELDS = ['kind', 'audience', 'public', 'community_seats', 'poster', 'recap'];
   var POST_KINDS = { job: 'Job', opportunity: 'Opportunity', ask: 'Ask', resource: 'Resource', partner: 'From a partner' };
   var LEADER_POST_KINDS = ['partner'];
   var POST_DAYS = 60;
@@ -658,6 +659,7 @@ var Core = (function () {
     POST_DAYS: POST_DAYS,
     TIME_ZONE: TIME_ZONE,
     CODE_LIMITS: CODE_LIMITS,
+    EVENT_LEADER_FIELDS: EVENT_LEADER_FIELDS,
     toBool: toBool,
     isTier: isTier,
     normalizeRules: normalizeRules,
