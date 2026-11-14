@@ -16,16 +16,18 @@ var Core = (function () {
     community: { leader: true, club: true, community: true }
   };
   // Sign-in emails: a code lives 30 minutes and allows 5 tries; each new email to the same address
-  // waits longer than the last (F110), and a day with none starts the count again. quotaReserve is
+  // waits longer than the last (F110), up to six hours, and six hours with none start the count
+  // again. Six hours is the longest Google's cache keeps anything, and the count lives there, so
+  // no wait may be longer (F125). quotaReserve is
   // the day's mail kept for sign-in emails, and applicationsPerDay is the most application emails
   // sent in a day to addresses not on the list (F118); requests and partner messages share a cap
   // per window.
   var CODE_LIMITS = {
     ttlMs: 30 * 60 * 1000, maxTries: 5,
-    waitsMs: [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000, 3 * 60 * 60 * 1000, 24 * 60 * 60 * 1000],
-    quietMs: 24 * 60 * 60 * 1000, quotaReserve: 20, applicationsPerDay: 40, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
+    waitsMs: [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000, 3 * 60 * 60 * 1000, 6 * 60 * 60 * 1000],
+    quietMs: 6 * 60 * 60 * 1000, quotaReserve: 20, applicationsPerDay: 40, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
   };
-  var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'hidden', 'bio', 'photo'];
+  var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'bio', 'photo'];
   // Adding a kind of event or post is one line here; the forms and pages read these lists.
   var EVENT_KINDS = { meeting: 'Meeting', meetup: 'Meetup', dinner: 'Dinner', external: 'Outside event' };
   // What only a leader sets on an event. The edit form shows these to leaders alone, and a save
@@ -175,7 +177,6 @@ var Core = (function () {
     if (v.phone && !/^\+?\d{7,15}$/.test(v.phone)) errors.phone = 'Digits only, with the country code, like +972501234567';
     v.show_phone = toBool(input.show_phone) && !!v.phone;
     v.show_email = toBool(input.show_email);
-    v.hidden = toBool(input.hidden);
 
     var ok = Object.keys(errors).length === 0;
     return { ok: ok, value: v, errors: errors };
@@ -203,11 +204,7 @@ var Core = (function () {
   function buildDirectory(members, profilesById, rules, viewer) {
     if (!viewer || !toBool(viewer.active) || !isTier(viewer.tier)) return { members: [], hiddenTiers: TIERS.slice() };
     var list = (members || [])
-      .filter(function (m) {
-        if (!toBool(m.active) || !canSee(rules, viewer.tier, m.tier)) return false;
-        var p = (profilesById || {})[m.id];
-        return !(p && toBool(p.hidden)) || viewer.tier === 'leader' || viewer.id === m.id;
-      })
+      .filter(function (m) { return toBool(m.active) && canSee(rules, viewer.tier, m.tier); })
       .map(function (m) { return directoryEntry(m, (profilesById || {})[m.id], false); })
       .sort(function (a, b) { return a.name.localeCompare(b.name); });
     return { members: list, hiddenTiers: hiddenTiers(rules, viewer.tier) };

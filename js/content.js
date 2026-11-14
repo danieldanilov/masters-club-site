@@ -21,6 +21,35 @@ var CONTENT = {
 
   applyUrl: 'https://forms.gle/umgLKBHcCzH7N6uS8',
 
+  // Photos on Home, the first one large. Built from assets/club by tools/build-images.sh, from
+  // the club's own folder of selected photos, which are cleared for the public site.
+  moments: [
+    { src: 'img/club/cohort-1-together.jpg', alt: 'Cohort 1 together on stage at the closing night' },
+    { src: 'img/club/cohort-1-at-the-gala.jpg', alt: 'The cohort and its speakers after a session' },
+    { src: 'img/club/opening-night-circle.jpg', alt: 'Members standing in a circle at the opening workshop' },
+    { src: 'img/club/talk-in-the-round.jpg', alt: 'A speaker in conversation with the cohort, seated in a circle' },
+    { src: 'img/club/community-night-out.jpg', alt: 'Members raising glasses at a night out' }
+  ],
+
+  // Where the club is online and its contact email. They show in the footer of every page and on
+  // Home.
+  social: {
+    instagram: 'https://www.instagram.com/the_masters_club/',
+    linkedin: 'https://www.linkedin.com/company/111716473/',
+    email: 'mastersclub.runi@gmail.com'
+  },
+
+  // What applicants ask, on Join. Keep each answer to a sentence or two.
+  faq: [
+    { q: 'Who can apply?', a: "Master's students at Reichman University, from any school or programme." },
+    { q: 'How many people get in?', a: 'Up to 50 each cohort. We look for people who build, lead and show up for others.' },
+    { q: 'What happens after I apply?', a: "We read every application and invite the people we'd like to meet to a short interview. Everyone hears back." },
+    { q: 'What does a cohort look like?', a: 'Sessions with founders, executives and investors, workshops, and dinners, about once a month through the year.' },
+    { q: 'What language is it in?', a: 'English.' },
+    { q: 'What happens when my cohort ends?', a: 'You stay in the community for life: dinners, meetups and the directory of who can help with what.' },
+    { q: "I'm already a member. How do I sign in?", a: 'Enter your email above and we send you a sign-in link. No password.' }
+  ],
+
   // Photos are built from assets/leaders by tools/build-images.sh.
   leaders: [
     { name: 'Michael Kishon', role: 'Founder, club lead', photo: 'img/leaders/michael-kishon.jpg' },

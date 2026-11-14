@@ -29,7 +29,6 @@
       '<label>WhatsApp number <span class="hint">Optional, with the country code</span><input type="tel" name="phone" value="' + esc(p.phone) + '" placeholder="+972..."><span class="field-error" data-err="phone"></span></label>' +
       '<label class="check-line"><input type="checkbox" name="show_phone" ' + (p.show_phone ? 'checked' : '') + '> Show a WhatsApp button on my profile</label>' +
       '<label class="check-line"><input type="checkbox" name="show_email" ' + (p.show_email ? 'checked' : '') + '> Show my email <span class="ph-sensitive">(' + esc(u.email) + ')</span> on my profile</label>' +
-      '<label class="check-line"><input type="checkbox" name="hidden" ' + (p.hidden ? 'checked' : '') + '> Hide me from the directory</label>' +
       '<div class="row-actions"><button class="btn gold" type="submit">Save profile</button></div>' +
       '</form><div class="sticky"><div class="preview-label">How others see you</div><div class="preview panel mist tied"><div class="sheet" id="preview"></div></div></div></div>');
   }
@@ -41,7 +40,7 @@
       profile: {
         role: fd.get('role'), company: fd.get('company'), city: fd.get('city'), program: fd.get('program'), industry: fd.get('industry'),
         help: fd.get('help'), looking: fd.get('looking'), interests: fd.get('interests'), open_to: fd.getAll('open_to'),
-        bio: fd.get('bio'), linkedin: fd.get('linkedin'), phone: fd.get('phone'), show_phone: !!fd.get('show_phone'), show_email: !!fd.get('show_email'), hidden: !!fd.get('hidden')
+        bio: fd.get('bio'), linkedin: fd.get('linkedin'), phone: fd.get('phone'), show_phone: !!fd.get('show_phone'), show_email: !!fd.get('show_email')
       }
     };
   }
@@ -90,7 +89,7 @@
   function profileFacts(u, v) {
     var filled = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'interests', 'open_to', 'bio', 'linkedin', 'phone']
       .filter(function (k) { return Array.isArray(v[k]) ? v[k].length : !!v[k]; }).length;
-    return { first_time: !!u.first, fields_filled: filled, has_photo: !!u.profile.photo, show_phone: !!v.show_phone, show_email: !!v.show_email, hidden: !!v.hidden };
+    return { first_time: !!u.first, fields_filled: filled, has_photo: !!u.profile.photo, show_phone: !!v.show_phone, show_email: !!v.show_email };
   }
 
   // Crops to a square and shrinks to a small JPEG in the browser, so the file's original size,

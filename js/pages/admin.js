@@ -88,7 +88,8 @@
           '<td class="plain"><span class="cell-label" aria-hidden="true">Last seen</span>' + esc(m.last_seen ? Core.shortDate(m.last_seen) : 'Never') + '</td>' +
           '<td class="plain"><span class="cell-label" aria-hidden="true">Came to</span>' + m.attended + '</td>' +
           '<td><label class="active-cell"><input type="checkbox" data-f="active" aria-label="Active" ' + (m.active ? 'checked' : '') + (self ? ' disabled' : '') + '><span class="cell-label" aria-hidden="true">Active</span></label></td>' +
-          '<td><button class="btn quiet small" data-save>Save</button></td></tr>';
+          '<td><div class="row-actions"><button class="btn quiet small" data-save>Save</button>' +
+          (m.email && m.active ? '<button class="btn quiet small" type="button" data-send-link>Send sign-in link</button>' : '') + '</div></td></tr>';
       }).join('') + '</tbody></table></div></section>' +
 
       '<section class="admin-section" id="s-public"><h2>Public pages</h2><div class="admin-pair"><form class="form-grid form-narrow" id="settingsForm" novalidate>' +
@@ -253,6 +254,18 @@
           $('#bulkResult').innerHTML = '<div class="note warn">Skipped:<br>' + r.skipped.map(function (s) { return esc(s.line) + ': ' + esc(s.reason); }).join('<br>') + '</div>';
         }
       } catch (err) { setBusy(btn, false); toast(err.message); }
+    });
+
+    $$('[data-send-link]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        setBusy(btn, true, 'Sending…');
+        try {
+          await Api.call('admin.sendSignIn', { memberId: btn.closest('[data-member]').dataset.member });
+          Analytics.track('sign in link sent');
+          toast('Sign-in link sent');
+        } catch (err) { toast(err.message); }
+        setBusy(btn, false);
+      });
     });
 
     $$('[data-member]').forEach(function (row) {
