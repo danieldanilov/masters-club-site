@@ -16,6 +16,7 @@
   --danger-bg: #fbeceb;
   --danger-ink: #5d1b17;
   --gold-tint: #f3ead2;
+  --black: #0a0a0a;
   --gold-ink: #6b521a;
   --placeholder: #6a7590;
   --tie-white: #f4efe1;
@@ -180,6 +181,14 @@ input[type=checkbox] { width: 1.125rem; height: 1.125rem; margin: 0; cursor: poi
 /* ---------- avatars ---------- */
 
 .avatar { width: 3rem; height: 3rem; border-radius: var(--round); display: grid; place-items: center; flex: none; background: var(--navy); color: var(--gold); font-family: var(--display); font-weight: 600; font-size: var(--s-body); letter-spacing: 0.02em; object-fit: cover; }
+/* No photo: one of six gradients under the initials, made only of the site's navy and gold with
+   white and black (Core.avatarTone). */
+.avatar.tone-1 { background-image: linear-gradient(135deg, var(--navy), var(--black)); }
+.avatar.tone-2 { background-image: linear-gradient(135deg, var(--gold), var(--white) 160%); color: var(--navy); }
+.avatar.tone-3 { background-image: linear-gradient(135deg, var(--navy) 45%, var(--gold) 190%); color: var(--white); }
+.avatar.tone-4 { background-image: linear-gradient(135deg, var(--white), var(--gold) 240%); color: var(--navy); box-shadow: inset 0 0 0 1px var(--mist-2); }
+.avatar.tone-5 { background-image: linear-gradient(135deg, var(--black) 35%, var(--gold) 230%); }
+.avatar.tone-6 { background-image: linear-gradient(135deg, var(--gold) 50%, var(--navy) 210%); color: var(--navy); }
 .avatar.lg { width: 6.5rem; height: 6.5rem; font-size: var(--s-head); }
 .avatar.sm { width: 2.5rem; height: 2.5rem; font-size: var(--s-small); }
 

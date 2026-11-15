@@ -48,7 +48,7 @@ var App = (function () {
   function avatar(person, cls) {
     var src = photoSrc(person);
     if (src) return '<img class="avatar ' + (cls || '') + (person.id ? ' ph-no-capture' : '') + '" src="' + esc(src) + '" alt="" referrerpolicy="no-referrer">';
-    return '<div class="avatar ' + (cls || '') + '" aria-hidden="true">' + esc(initials(person.name)) + '</div>';
+    return '<div class="avatar tone-' + Core.avatarTone(person.id || person.name) + ' ' + (cls || '') + '" aria-hidden="true">' + esc(initials(person.name)) + '</div>';
   }
   function tags(m) {
     return '<span class="tag ' + esc(m.tier) + '">' + esc(TIER_LABEL[m.tier] || m.tier) + '</span>' +

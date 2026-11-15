@@ -587,6 +587,16 @@ var Core = (function () {
     return { x: Math.round((w - side) / 2), y: h > w ? Math.round((h - side) * 0.2) : 0, side: side };
   }
 
+  // Which of the avatar gradients someone without a photo wears: always the same one for the
+  // same person, and neighbours in the members list get different ones.
+  var AVATAR_TONES = 6;
+  function avatarTone(key) {
+    var s = String(key || '');
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 9973;
+    return h % AVATAR_TONES + 1;
+  }
+
   /* ---------- sheet and csv safety ---------- */
 
   function sanitizeCell(v) {
@@ -696,6 +706,8 @@ var Core = (function () {
     buildDigest: buildDigest,
     splitPosition: splitPosition,
     cropSquare: cropSquare,
+    AVATAR_TONES: AVATAR_TONES,
+    avatarTone: avatarTone,
     isPeopleTable: isPeopleTable,
     parsePeopleTable: parsePeopleTable,
     makeCode: makeCode,
