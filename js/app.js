@@ -320,7 +320,7 @@ var App = (function () {
 
   function signOut() {
     // Sent while still named, then this browser goes back to anonymous for whoever's next.
-    Analytics.track('signed out');
+    Analytics.track('signed out', { reason: 'user' });
     Analytics.reset();
     Api.setSession(null);
     clearSaved();
@@ -330,6 +330,8 @@ var App = (function () {
   }
 
   Api.onSignedOut(function () {
+    // The API stopped accepting the session: counted like a sign-out, with why.
+    if (state.me) Analytics.track('signed out', { reason: 'expired' });
     Analytics.reset();
     clearSaved();
     toast('Your session ended. Please sign in again.');
@@ -415,7 +417,8 @@ var App = (function () {
   // load it's off, so it never flashes in for members; for a leader it appears once they arrive.
   function routeOn(hash) {
     var r = routes[hash];
-    return !(r && r.flag) || !!Analytics.flag(r.flag);
+    // Flags only gate members' pages, so a visitor's page never asks PostHog for one (F130).
+    return !(r && r.flag) || (!!state.me && !!Analytics.flag(r.flag));
   }
   function flagsNow() {
     return Object.keys(routes).filter(function (h) { return routes[h].flag; }).map(function (h) { return h + routeOn(h); }).join();

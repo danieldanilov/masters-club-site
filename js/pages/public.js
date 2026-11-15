@@ -195,7 +195,9 @@
         await Api.call('emailStart', { email: email }, { session: '' });
         // This visit gets the email they gave; signing in as a member makes it that member's (F123).
         Analytics.identify({ email: email });
-        Analytics.track('sign in code sent');
+        // The API answers the same for everyone, so the site can't tell a sign-in code from an
+        // application email. Which one it was shows in what the person does next.
+        Analytics.track('join email sent', { resend: false });
         App.setPendingCode(email);
         checkStep(flow, email);
         $('input[name=code]', flow).focus();
@@ -275,7 +277,7 @@
       setBusy(btn, true, 'Sending…');
       try {
         await Api.call('emailStart', { email: email }, { session: '' });
-        Analytics.track('new code requested');
+        Analytics.track('join email sent', { resend: true });
         App.setPendingCode(email, p.n + 1);
         toast('New code sent');
       } catch (err) {
@@ -295,7 +297,7 @@
     var got = new URLSearchParams(location.hash.slice(1));
     if (got.get('e')) {
       tellEmail = Core.normalizeEmail(got.get('e'));
-      history.replaceState(null, '', App.toPath('tell'));
+      history.replaceState(null, '', App.toPath('tell') + location.search);
     }
     if (!tellEmail) { go('join'); return ''; }
     return page('<section class="signin-card panel mist"><h1>Tell the club leads</h1>' +
@@ -337,7 +339,7 @@
     var got = new URLSearchParams(location.hash.slice(1));
     if (got.get('e')) {
       Analytics.identify({ email: Core.normalizeEmail(got.get('e')) });
-      history.replaceState(null, '', App.toPath('apply'));
+      history.replaceState(null, '', App.toPath('apply') + location.search);
     }
     await App.refreshPublic();
     var s = info().settings || {};
@@ -345,11 +347,14 @@
       $('#applyNote').textContent = 'Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.';
       return;
     }
-    Analytics.track('apply clicked', { source: 'email' });
     var url = s.apply_url || CONTENT.applyUrl;
     $('#applyNote').innerHTML = 'Opening it now. If nothing happens, <a class="link" href="' + esc(url) + '">open the form</a>.';
-    // A moment for the event to leave before the page does.
-    setTimeout(function () { location.replace(url); }, 400);
+    // The page is about to leave the site, so the click waits for posthog-js (2 seconds at most)
+    // and goes by beacon, then a moment for it to leave (F129).
+    Analytics.whenReady(function () {
+      Analytics.track('apply clicked', { source: 'email' }, { leaving: true });
+      setTimeout(function () { location.replace(url); }, 400);
+    });
   }
 
   // Where the link in the email lands: one tap to sign in. The tap matters, since some mail
@@ -361,7 +366,8 @@
     var got = new URLSearchParams(location.hash.slice(1));
     if (got.get('e') && got.get('c')) {
       linkCode = { email: Core.normalizeEmail(got.get('e')), code: String(got.get('c')) };
-      history.replaceState(null, '', App.toPath('signin'));
+      // The email and code leave the address; the campaign the link came with stays (F129).
+      history.replaceState(null, '', App.toPath('signin') + location.search);
     }
     if (!linkCode) { go('join'); return ''; }
     return page('<section class="signin-card panel mist tied"><h1>Sign in to the club</h1>' +

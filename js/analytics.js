@@ -1,5 +1,5 @@
 // Analytics, all in one place: the rest of the site calls Analytics.track(), identify(), reset(),
-// error() and flag(), and only this file knows it's PostHog. It's off unless CONFIG has a PostHog
+// error(), flag() and whenReady(), and only this file knows it's PostHog. It's off unless CONFIG has a PostHog
 // key and this is the live site or staging, so the dev server and every test send nothing. Staging
 // has its own PostHog project, and stays off while its key is empty (docs/07-setup.md).
 // What's tracked and how to add an event: docs/02-architecture.md, "Analytics".
@@ -7,6 +7,11 @@ var Analytics = (function () {
   var on = !!(typeof CONFIG !== 'undefined' && CONFIG.POSTHOG_KEY && (CONFIG.ENV === 'production' || CONFIG.ENV === 'staging'));
   // The flag override's key, for local work and staging.
   var FLAGS_KEY = 'mc-flags-v1';
+  // Who this browser was last named as, with their details, so they're sent once and not on
+  // every page load (F130).
+  var NAMED_KEY = 'mc-named-v1';
+  function stored() { try { return localStorage.getItem(NAMED_KEY); } catch (e) { return null; } }
+  function store(v) { try { if (v) localStorage.setItem(NAMED_KEY, v); else localStorage.removeItem(NAMED_KEY); } catch (e) { /* private mode */ } }
 
   /* ---------- keeping personal details out of events ---------- */
 
@@ -52,6 +57,9 @@ var Analytics = (function () {
 
   /* ---------- loading PostHog ---------- */
 
+  var ready = false;
+  var waiting = [];
+
   // The settings, kept apart so the tests can read them.
   var options = {
     api_host: on ? CONFIG.POSTHOG_HOST : '',
@@ -69,7 +77,12 @@ var Analytics = (function () {
     // wrote about themselves, emails, notes). Photos and contact links carry ph-no-capture,
     // which replay shows as an empty box. Network bodies and headers are never recorded.
     session_recording: { maskAllInputs: true, maskTextSelector: '.ph-sensitive', maskCapturedNetworkRequestFn: maskRequest },
-    before_send: scrub
+    before_send: scrub,
+    // posthog-js has arrived: whatever waited for it goes now.
+    loaded: function () {
+      ready = true;
+      waiting.splice(0).forEach(function (fn) { fn(); });
+    }
   };
 
   if (on) {
@@ -99,8 +112,23 @@ var Analytics = (function () {
 
     // An event named "object verb", lowercase, past tense: "post created". Properties are ids,
     // counts, choices and yes/no only, never what someone typed.
-    track: function (name, props) {
-      if (ph()) posthog.capture(name, props || {});
+    // leaving: true is for an event sent just before the page goes somewhere else. It goes by
+    // beacon, which the browser delivers even after the page is gone (F129).
+    track: function (name, props, opts) {
+      if (!ph()) return;
+      if (opts && opts.leaving) posthog.capture(name, props || {}, { transport: 'sendBeacon' });
+      else posthog.capture(name, props || {});
+    },
+
+    // Runs fn once posthog-js has loaded, or after ms (2 seconds) if it's slow or blocked, and at
+    // once when analytics is off. For a page that sends an event and then leaves the site: calls
+    // made before posthog-js arrives only wait in memory, and leaving would drop them.
+    whenReady: function (fn, ms) {
+      if (!on || ready) { fn(); return; }
+      var done = false;
+      var once = function () { if (!done) { done = true; fn(); } };
+      waiting.push(once);
+      setTimeout(once, ms || 2000);
     },
 
     // Names this browser's person. A member, by their id from the Members tab, with name, email,
@@ -108,7 +136,8 @@ var Analytics = (function () {
     // application email) keeps their anonymous id and gets that email as a property, so when they
     // sign in the same visit becomes the member's and the sign-in funnel reads as one person
     // (F123). A signed-in member is never renamed by an email, and moving from one member to
-    // another starts a new person, so nobody's actions land on someone else (F109).
+    // another starts a new person, so nobody's actions land on someone else (F109). The site
+    // names a member on every page load; their details go along only when they changed (F130).
     identify: function (who) {
       if (!ph() || !who) return;
       var current = member();
@@ -116,16 +145,20 @@ var Analytics = (function () {
         if (who.email && !current) posthog.setPersonProperties({ email: who.email });
         return;
       }
-      if (current && current !== who.id) posthog.reset();
+      if (current && current !== who.id) { posthog.reset(); store(null); }
       var props = {};
       ['name', 'email', 'tier', 'cohort'].forEach(function (k) { if (who[k] !== undefined) props[k] = who[k]; });
-      posthog.identify(who.id, props);
+      var details = JSON.stringify([who.id, props]);
+      if (stored() === details) posthog.identify(who.id);
+      else posthog.identify(who.id, props);
+      store(details);
       named = who.id;
     },
 
     // Signing out: the next person on this browser starts anonymous.
     reset: function () {
       named = null;
+      store(null);
       if (ph()) posthog.reset();
     },
 
