@@ -597,6 +597,12 @@ var Core = (function () {
     return h % AVATAR_TONES + 1;
   }
 
+  // The site's own photos are built as JPEG and as WebP, about half the size (F136). The page
+  // asks for the WebP; a photo from anywhere else, a logo or a saved member photo is left alone.
+  function webp(src) {
+    return /^img\/(?:[\w-]+\/)*[\w-]+\.jpe?g$/.test(String(src)) ? String(src).replace(/\.jpe?g$/, '.webp') : src;
+  }
+
   /* ---------- sheet and csv safety ---------- */
 
   function sanitizeCell(v) {
@@ -708,6 +714,7 @@ var Core = (function () {
     cropSquare: cropSquare,
     AVATAR_TONES: AVATAR_TONES,
     avatarTone: avatarTone,
+    webp: webp,
     isPeopleTable: isPeopleTable,
     parsePeopleTable: parsePeopleTable,
     makeCode: makeCode,

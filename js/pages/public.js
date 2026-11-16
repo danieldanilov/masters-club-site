@@ -22,12 +22,12 @@
       '<div><dt>The community</dt><dd>' + esc(c.community) + '</dd></div>' +
       '</dl></section>' +
       '<section class="moments" aria-label="Photos from the club">' + c.moments.map(function (m, i) {
-        return '<img src="' + esc(m.src) + '" alt="' + esc(m.alt) + '" width="' + (i ? 900 : 1600) + '" height="' + (i ? 600 : 1067) + '"' + (i ? ' loading="lazy"' : '') + '>';
+        return '<img src="' + esc(Core.webp(m.src)) + '" alt="' + esc(m.alt) + '" width="' + (i ? 900 : 1600) + '" height="' + (i ? 600 : 1067) + '"' + (i ? ' loading="lazy"' : '') + '>';
       }).join('') + '</section></div>' +
       '<section class="statement"><div class="wrap"><p>' + esc(c.giveFirst) + ' <span>' + esc(c.giveFirstRest) + '</span></p></div></section>' +
       '<div class="wrap"><section class="past"><div class="past-head"><h2>In the past</h2><a class="link" href="meetings">All meetings</a></div>' +
       '<div class="rail">' + c.meetings.map(function (mt) {
-        return '<a href="meetings?m=' + esc(mt.id) + '"><img src="' + esc(mt.poster) + '" alt="" loading="lazy" width="640" height="800">' +
+        return '<a href="meetings?m=' + esc(mt.id) + '"><img src="' + esc(Core.webp(mt.poster)) + '" alt="" loading="lazy" width="640" height="800">' +
           '<span class="who">' + esc(mt.speaker) + '</span><span class="when">' + esc(longDate(mt.date)) + '</span></a>';
       }).join('') + '</div></section>' +
       (coming.length ? '<section class="coming"><div class="past-head"><h2>In the future</h2>' +
@@ -59,14 +59,14 @@
       '<p class="lead measure mt-2">Every meeting opens with food and structured networking, then a talk or workshop with someone worth hearing.</p>' +
       '<div class="meetings">' + list.map(function (m, i) {
         return '<article class="meeting" id="m-' + esc(m.id) + '">' +
-          (m.poster ? '<img class="poster" src="' + esc(m.poster) + '" alt="Poster for ' + esc(m.speaker) + '" width="640" height="800"' + (i > 1 ? ' loading="lazy"' : '') + '>' : '') +
+          (m.poster ? '<img class="poster" src="' + esc(Core.webp(m.poster)) + '" alt="Poster for ' + esc(m.speaker) + '" width="640" height="800"' + (i ? '' : ' fetchpriority="high"') + (i > 1 ? ' loading="lazy"' : '') + '>' : '') +
           '<div class="body">' +
           '<p class="meta"><time datetime="' + esc(m.date) + '">' + esc(longDate(m.date)) + '</time><span>' + esc(m.kind) + '</span></p>' +
           '<h2>' + esc(m.speaker) + '</h2><p class="muted role">' + esc(m.role) + '</p>' +
           (m.quote ? '<blockquote>' + esc(m.quote) + '</blockquote>' : '') +
           '<p class="recap">' + esc(m.recap) + '</p>' +
           (m.photos && m.photos.length ? '<div class="photos n' + m.photos.length + '">' + m.photos.map(function (p) {
-            return '<img src="' + esc(p.src) + '" alt="' + esc(p.alt) + '" loading="lazy">';
+            return '<img src="' + esc(Core.webp(p.src)) + '" alt="' + esc(p.alt) + '" loading="lazy">';
           }).join('') + '</div>' : '') +
           '</div></article>';
       }).join('') + '</div>');

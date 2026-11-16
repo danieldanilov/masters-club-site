@@ -42,7 +42,7 @@ var App = (function () {
   function photoSrc(person) {
     var photo = person.profile && person.profile.photo;
     if (!photo) return '';
-    if (photo.indexOf('sheet:') !== 0) return photo;
+    if (photo.indexOf('sheet:') !== 0) return Core.webp(photo);
     var saved = photoCache()[person.id];
     return saved && saved.v === photo ? saved.data : '';
   }
@@ -274,11 +274,17 @@ var App = (function () {
     try {
       var r = await Api.call('publicInfo', {}, { session: '' });
       delete r.ok;
-      var changed = JSON.stringify(r) !== JSON.stringify(state.publicInfo);
+      var at = routeOf();
+      var route = routes[at.route];
+      var isPublic = route && route.isPublic;
+      // The page is drawn again only if the fresh data changes what it shows (F137). On a first
+      // visit the data is always new, but most pages show none of it, and drawing them twice
+      // fetched every image again and moved the page under the reader.
+      var before = isPublic ? route.page(at.params) : '';
       state.publicInfo = r;
       writeJson('localStorage', PUBLIC_KEY, r);
-      var route = routes[routeOf().route];
-      if (changed && route && route.isPublic && !$('form:focus-within')) {
+      var changed = isPublic && route.page(at.params) !== before;
+      if (changed && !$('form:focus-within')) {
         var y = window.scrollY;
         render();
         window.scrollTo(0, y);
