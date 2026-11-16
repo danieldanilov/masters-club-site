@@ -13,7 +13,9 @@ var App = (function () {
     data: null,        // {directory, events, posts, pending, today} from boot, or the saved copy
     dir: { q: '', cohort: '', industry: '', open: [], tier: '' },
     board: { q: '', kind: '' },
-    publicInfo: null   // live data for the public pages
+    publicInfo: null,  // live data for the public pages
+    admin: null,       // what Admin shows, for leaders: kept in memory only, never saved to the browser
+    rosters: {}        // attendance lists opened this session, by event id
   };
   var routes = {};
   var drawFailed = false;
@@ -182,6 +184,10 @@ var App = (function () {
   function clearSaved() {
     state.me = null;
     state.data = null;
+    state.admin = null;
+    state.rosters = {};
+    adminCall = null;
+    adminAsk++;
     photos = null;
     writeJson('localStorage', BOOT_KEY, null);
     writeJson('localStorage', PHOTOS_KEY, null);
@@ -206,12 +212,31 @@ var App = (function () {
     else if (before !== JSON.stringify(state.data) || fetched) notifyPage();
   }
 
+  // Admin's data for a leader (F133). It's asked for as soon as a leader's data arrives, so Admin
+  // opens at once instead of waiting on the API. fresh=true starts a new call, for after a change;
+  // otherwise a call already on its way is shared. Only the newest call's answer is kept.
+  var adminCall = null;
+  var adminAsk = 0;
+  function loadAdmin(fresh) {
+    if (adminCall && !fresh) return adminCall;
+    var mine = ++adminAsk;
+    var call = Api.call('admin.overview').then(function (r) {
+      if (mine === adminAsk) state.admin = r;
+      return r;
+    });
+    adminCall = call;
+    var done = function () { if (adminCall === call) adminCall = null; };
+    call.then(done, done);
+    return call;
+  }
+
   // Keeps what a boot or a sign-in sent.
   function take(r) {
     state.me = r.me;
     state.data = { directory: r.directory, events: r.events, posts: r.posts, pending: r.pending || 0, today: r.today };
     saveData();
     Analytics.identify(state.me);
+    if (state.me.tier === 'leader') loadAdmin().catch(function () {});
   }
 
   function notifyPage() {
@@ -521,7 +546,7 @@ var App = (function () {
   return {
     $: $, $$: $$, esc: esc, state: state, icon: icon, page: page, avatar: avatar, tags: tags, roleLine: roleLine, toast: toast, go: go, loading: loading,
     errorBlock: errorBlock, setBusy: setBusy, wireRetry: wireRetry, clearErrors: clearErrors, showErrors: showErrors, longDate: longDate, signInWithCode: signInWithCode, pendingCode: pendingCode, setPendingCode: setPendingCode, devSignIn: devSignIn,
-    openSheet: openSheet, closeSheet: closeSheet, route: route, render: render, refresh: refresh, refreshPublic: refreshPublic, replaceItem: replaceItem, saveData: saveData,
+    openSheet: openSheet, closeSheet: closeSheet, route: route, render: render, refresh: refresh, refreshPublic: refreshPublic, loadAdmin: loadAdmin, replaceItem: replaceItem, saveData: saveData,
     siteLink: siteLink, toPath: toPath, socialLinks: socialLinks, copyText: copyText, downloadFile: downloadFile, photoCache: photoCache, writeJson: writeJson, PHOTOS_KEY: PHOTOS_KEY, fetchPhotos: fetchPhotos, start: start
   };
 })();

@@ -231,6 +231,8 @@
           patch[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value;
           try {
             await Api.call('rosterUpdate', patch);
+            // The kept copy (F134) takes the change too, so coming back shows it.
+            (state.rosters[eventId] || []).forEach(function (r) { if (r.member_id === patch.memberId) r[el.dataset.f] = patch[el.dataset.f]; });
             Analytics.track('roster updated', { event_id: eventId, field: el.dataset.f });
             toast('Saved');
           } catch (err) { toast(err.message); }
@@ -243,8 +245,19 @@
     var id = params.get('e');
     if (!find(id)) return;
     var rows = [];
-    var load = function (r) { rows = r.rows; drawRoster(id, rows); };
-    try { load(await Api.call('eventRoster', { eventId: id })); } catch (err) { $('#roster').innerHTML = '<div class="note warn">' + esc(err.message) + '</div>'; return; }
+    var load = function (r) { rows = r.rows; state.rosters[id] = rows; drawRoster(id, rows); };
+    // A list opened before shows at once and the fresh one follows (F134), unless the leader is in
+    // the middle of a field. The buttons work from the first draw.
+    var kept = state.rosters[id];
+    if (kept) { rows = kept; drawRoster(id, rows); }
+    var fresh = Api.call('eventRoster', { eventId: id }).then(function (r) {
+      if (!$('#roster')) return;
+      var busy = $('#roster').contains(document.activeElement);
+      if (!kept || (!busy && JSON.stringify(r.rows) !== JSON.stringify(rows))) load(r);
+      else if (!busy) state.rosters[id] = rows = r.rows;
+    }, function (err) { if (!kept && $('#roster')) $('#roster').innerHTML = '<div class="note warn">' + esc(err.message) + '</div>'; });
+    if (!kept) await fresh;
+    if (!$('#roster')) return;
     $('[data-groups]').addEventListener('click', async function (ev) {
       setBusy(ev.target, true, 'Making…');
       try {
