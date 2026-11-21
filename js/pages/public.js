@@ -41,15 +41,16 @@
   }
 
   // Why the club exists, in a navy panel wearing the page's band, then the people who run it as
-  // large square photos, each with a link to their LinkedIn.
+  // large square photos, each with a link to their LinkedIn on the name's line.
   function pageAbout() {
     return page('<section class="about-top panel navy tied"><h1>Why the club exists</h1>' +
       '<p class="lead measure">' + esc(CONTENT.mission) + '</p></section>' +
       '<section class="about-people"><h2>Who runs it</h2>' +
       '<p class="lead measure">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
       '<div class="people">' + CONTENT.leaders.map(function (p) {
-        return '<div class="person">' + avatar({ name: p.name, profile: { photo: p.photo } }, 'portrait') + '<div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div>' +
-          (p.linkedin ?'<a class="person-link" href="' + esc(p.linkedin) + '" target="_blank" rel="noopener" aria-label="' + esc(p.name) + ' on LinkedIn">' + App.icon('linkedin') + ' LinkedIn</a>' : '') + '</div>';
+        return '<div class="person">' + avatar({ name: p.name, profile: { photo: p.photo } }, 'portrait') +
+          '<div class="person-head"><div class="person-who"><div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div></div>' +
+          (p.linkedin ? '<a class="person-link" href="' + esc(p.linkedin) + '" target="_blank" rel="noopener" aria-label="' + esc(p.name) + ' on LinkedIn">' + App.icon('linkedin') + ' LinkedIn</a>' : '') + '</div></div>';
       }).join('') + '</div></section>');
   }
 

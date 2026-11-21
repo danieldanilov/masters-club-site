@@ -324,8 +324,10 @@ input[type=checkbox] { width: 1.125rem; height: 1.125rem; margin: 0; cursor: poi
 /* Three a row from a laptop, two on a phone: the six leaders always make full rows. */
 .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(9rem, (100% - 2 * 2rem) / 3)), 1fr)); gap: 2.5rem 2rem; margin-top: 2.5rem; }
 @media (max-width: 480px) { .people { gap: 1.75rem 1rem; } }
-.person { display: flex; flex-direction: column; gap: 0.25rem; }
+.person { display: flex; flex-direction: column; }
 .person .avatar.portrait { width: 100%; height: auto; aspect-ratio: 1; border-radius: var(--radius); margin: 0 0 1rem; font-size: var(--s-display); }
+.person-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 1rem; }
+.person-who { display: flex; flex-direction: column; gap: 0.25rem; }
 .person .name { font-family: var(--display); font-size: var(--s-lead); font-weight: 500; line-height: 1.2; }
 
 /* ---------- partners ---------- */
