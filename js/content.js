@@ -52,12 +52,12 @@ var CONTENT = {
 
   // Photos are built from assets/leaders by tools/build-images.sh.
   leaders: [
-    { name: 'Michael Kishon', role: 'Founder, club lead', photo: 'img/leaders/michael-kishon.jpg' },
-    { name: 'Noy Swissa Segal', role: 'Club lead', photo: 'img/leaders/noy-swissa-segal.jpg' },
-    { name: 'Dor Bitton', role: 'Club lead', photo: 'img/leaders/dor-bitton.jpg' },
-    { name: 'Maor Kaufman', role: 'Community lead', photo: 'img/leaders/maor-kaufman.jpg' },
-    { name: 'Omri Bitan', role: 'Community lead', photo: 'img/leaders/omri-bitan.jpg' },
-    { name: 'Daniel Danilov', role: 'Community lead', photo: 'img/leaders/daniel-danilov.jpg' }
+    { name: 'Michael Kishon', role: 'Founder, club lead', photo: 'img/leaders/michael-kishon.jpg', linkedin: 'https://www.linkedin.com/in/michael-kishon' },
+    { name: 'Noy Segal Swisa', role: 'Club lead', photo: 'img/leaders/noy-segal-swisa.jpg', linkedin: 'https://www.linkedin.com/in/noy-segal26' },
+    { name: 'Dor Bitton', role: 'Club lead', photo: 'img/leaders/dor-bitton.jpg', linkedin: 'https://www.linkedin.com/in/dor-bitton22' },
+    { name: 'Maor Kaufman', role: 'Community lead', photo: 'img/leaders/maor-kaufman.jpg', linkedin: 'https://www.linkedin.com/in/maor-kaufman' },
+    { name: 'Omri Bitan', role: 'Community lead', photo: 'img/leaders/omri-bitan.jpg', linkedin: 'https://www.linkedin.com/in/omri-bitan' },
+    { name: 'Daniel Danilov', role: 'Community lead', photo: 'img/leaders/daniel-danilov.jpg', linkedin: 'https://www.linkedin.com/in/danieldanilov' }
   ],
 
   // Past meetings, oldest first. Posters and photos are built from assets/meetings by

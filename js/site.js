@@ -253,12 +253,12 @@ var CONTENT = {
 
   // Photos are built from assets/leaders by tools/build-images.sh.
   leaders: [
-    { name: 'Michael Kishon', role: 'Founder, club lead', photo: 'img/leaders/michael-kishon.jpg' },
-    { name: 'Noy Swissa Segal', role: 'Club lead', photo: 'img/leaders/noy-swissa-segal.jpg' },
-    { name: 'Dor Bitton', role: 'Club lead', photo: 'img/leaders/dor-bitton.jpg' },
-    { name: 'Maor Kaufman', role: 'Community lead', photo: 'img/leaders/maor-kaufman.jpg' },
-    { name: 'Omri Bitan', role: 'Community lead', photo: 'img/leaders/omri-bitan.jpg' },
-    { name: 'Daniel Danilov', role: 'Community lead', photo: 'img/leaders/daniel-danilov.jpg' }
+    { name: 'Michael Kishon', role: 'Founder, club lead', photo: 'img/leaders/michael-kishon.jpg', linkedin: 'https://www.linkedin.com/in/michael-kishon' },
+    { name: 'Noy Segal Swisa', role: 'Club lead', photo: 'img/leaders/noy-segal-swisa.jpg', linkedin: 'https://www.linkedin.com/in/noy-segal26' },
+    { name: 'Dor Bitton', role: 'Club lead', photo: 'img/leaders/dor-bitton.jpg', linkedin: 'https://www.linkedin.com/in/dor-bitton22' },
+    { name: 'Maor Kaufman', role: 'Community lead', photo: 'img/leaders/maor-kaufman.jpg', linkedin: 'https://www.linkedin.com/in/maor-kaufman' },
+    { name: 'Omri Bitan', role: 'Community lead', photo: 'img/leaders/omri-bitan.jpg', linkedin: 'https://www.linkedin.com/in/omri-bitan' },
+    { name: 'Daniel Danilov', role: 'Community lead', photo: 'img/leaders/daniel-danilov.jpg', linkedin: 'https://www.linkedin.com/in/danieldanilov' }
   ],
 
   // Past meetings, oldest first. Posters and photos are built from assets/meetings by
@@ -1730,14 +1730,15 @@ var App = (function () {
   }
 
   // Why the club exists, in a navy panel wearing the page's band, then the people who run it as
-  // large square photos.
+  // large square photos, each with a link to their LinkedIn.
   function pageAbout() {
     return page('<section class="about-top panel navy tied"><h1>Why the club exists</h1>' +
       '<p class="lead measure">' + esc(CONTENT.mission) + '</p></section>' +
       '<section class="about-people"><h2>Who runs it</h2>' +
       '<p class="lead measure">The club is the current cohort. The community is everyone who has been through it. Both are run by volunteers who are Reichman students.</p>' +
       '<div class="people">' + CONTENT.leaders.map(function (p) {
-        return '<div class="person">' + avatar({ name: p.name, profile: { photo: p.photo } }, 'portrait') + '<div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div></div>';
+        return '<div class="person">' + avatar({ name: p.name, profile: { photo: p.photo } }, 'portrait') + '<div class="name">' + esc(p.name) + '</div><div class="muted">' + esc(p.role) + '</div>' +
+          (p.linkedin ?'<a class="person-link" href="' + esc(p.linkedin) + '" target="_blank" rel="noopener" aria-label="' + esc(p.name) + ' on LinkedIn">' + App.icon('linkedin') + ' LinkedIn</a>' : '') + '</div>';
       }).join('') + '</div></section>');
   }
 
