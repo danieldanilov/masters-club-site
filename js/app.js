@@ -26,6 +26,7 @@ var App = (function () {
     search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
     close: '<path d="M6 6l12 12M18 6L6 18"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    chevron: '<path d="M7 10l5 5 5-5"/>',
     chat: '<path d="M5 19l1.2-3.6A7.5 7.5 0 1 1 9 18.3z"/><path d="M9.5 9.5c0 2.5 2 4.5 4.5 5l1-1.2-1.6-.9-.8.8c-.9-.4-1.6-1.1-2-2l.8-.8-.9-1.6z"/>',
     linkedin: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 10.5v5.5M8 7.8v.2M11.5 16v-5.5M11.5 13c0-1.6 1-2.6 2.3-2.6s2.2.9 2.2 2.6V16"/>'
   };
@@ -390,20 +391,61 @@ var App = (function () {
       }).join('');
   }
 
+  // The menu is places to go. Signing in adds the members' pages to it and keeps the club's own
+  // (F143); only Partners and Join, which are for outsiders, step back to the footer. Your profile
+  // and Sign out sit under your photo at the right, and in the phone menu they close the list.
   function renderNav(route) {
-    var links = [['about', 'About'], ['meetings', 'Meetings'], ['partners', 'Partners']];
-    if (state.me) {
-      links = [['members', 'Directory'], ['events', 'Events'], ['board', 'Board'], ['me', 'My profile']].filter(function (l) { return routeOn(l[0]); });
-      if (state.me.tier === 'leader') links.push(['admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
-    }
+    var link = function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; };
     $('#footSocial').innerHTML = socialLinks();
-    // Signed in, the public pages step back to the footer.
     $('#footLinks').innerHTML = state.me ? [['about', 'About'], ['meetings', 'Meetings'], ['partners', 'Partners'], ['join', 'Join']].map(function (l) { return '<a href="' + l[0] + '">' + l[1] + '</a>'; }).join('') : '';
-    var html = links.map(function (l) { return '<a href="' + l[0] + '" class="' + (route === l[0] ? 'active' : '') + '">' + l[1] + '</a>'; }).join('');
-    html += state.me ? '<a href="./" data-signout>Sign out</a>' : '<a href="join" class="btn gold small">Sign in</a>';
-    $('#nav').innerHTML = html;
-    var so = $('[data-signout]');
-    if (so) so.addEventListener('click', function (e) { e.preventDefault(); signOut(); });
+    if (!state.me) {
+      $('#nav').innerHTML = [['about', 'About'], ['meetings', 'Meetings'], ['partners', 'Partners']].map(link).join('') + '<a href="join" class="btn gold small">Sign in</a>';
+      return;
+    }
+    var links = [['members', 'Directory'], ['events', 'Events'], ['board', 'Board']].filter(function (l) { return routeOn(l[0]); });
+    links.push(['about', 'About'], ['meetings', 'Past meetings']);
+    if (state.me.tier === 'leader') links.push(['admin', 'Admin' + (state.data && state.data.pending ? ' (' + state.data.pending + ')' : '')]);
+    $('#nav').innerHTML = links.map(link).join('') +
+      '<div class="account"><button type="button" class="account-btn' + (route === 'me' ? ' active' : '') + '" aria-label="Your account" aria-expanded="false" aria-controls="accountMenu">' +
+      avatar({ id: state.me.id, name: state.me.name, profile: state.me.profile }, 'xs') + icon('chevron') + '</button>' +
+      '<div class="account-menu" id="accountMenu">' + link(['me', 'My profile']) + '<a href="./" data-signout>Sign out</a></div></div>';
+    $('[data-signout]').addEventListener('click', function (e) { e.preventDefault(); signOut(); });
+    wireAccount();
+  }
+
+  // The menu under your photo: the button opens it; Escape, a click elsewhere, tabbing out or going
+  // to another page closes it. Fresh data redraws the menu, so whether it's open, and which of its
+  // links had focus, carry over to the new one.
+  var accountOpen = false;
+  var accountFocus = '';
+  function wireAccount() {
+    var box = $('#nav .account');
+    var btn = $('.account-btn', box);
+    var setOpen = function (open) {
+      accountOpen = open;
+      box.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', String(open));
+    };
+    if (accountOpen) {
+      setOpen(true);
+      if (accountFocus) { var again = $('.account-menu [href="' + accountFocus + '"]', box); if (again) again.focus(); }
+    }
+    box.addEventListener('focusin', function (e) { accountFocus = e.target.closest('.account-menu a') ? e.target.getAttribute('href') : ''; });
+    btn.addEventListener('click', function () {
+      var open = !box.classList.contains('open');
+      setOpen(open);
+      if (open) $('.account-menu a', box).focus();
+    });
+    box.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && box.classList.contains('open')) { e.stopPropagation(); setOpen(false); btn.focus(); }
+    });
+    // Only a move of focus to somewhere else closes it: Safari gives a clicked link no focus, so
+    // a click on My profile must not count as leaving.
+    box.addEventListener('focusout', function (e) { if (e.relatedTarget && !box.contains(e.relatedTarget)) setOpen(false); });
+    document.addEventListener('click', function close(e) {
+      if (!document.body.contains(box)) return document.removeEventListener('click', close);
+      if (!box.contains(e.target)) setOpen(false);
+    });
   }
 
   /* ---------- forms ---------- */
@@ -471,6 +513,7 @@ var App = (function () {
     var r = routes[at.route] || routes[''];
     // Signed in, a flagged page that's off opens Home, like an address that doesn't exist.
     if (r.flag && state.me && !routeOn(at.route)) r = routes[''];
+    accountOpen = false;
     renderNav(at.route);
     setMenu(false);
     closeSheet();
