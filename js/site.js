@@ -232,14 +232,6 @@ var CONTENT = {
     { src: 'img/club/community-night-out.jpg', alt: 'Members raising glasses at a night out' }
   ],
 
-  // Where the club is online and its contact email. They show in the footer of every page and on
-  // Home.
-  social: {
-    instagram: 'https://www.instagram.com/the_masters_club/',
-    linkedin: 'https://www.linkedin.com/company/111716473/',
-    email: 'mastersclub.runi@gmail.com'
-  },
-
   // What applicants ask, on Join. Keep each answer to a sentence or two.
   faq: [
     { q: 'Who can apply?', a: "Master's students at Reichman University, from any school or programme." },
@@ -355,12 +347,20 @@ var Core = (function () {
   // again. Six hours is the longest Google's cache keeps anything, and the count lives there, so
   // no wait may be longer (F125). quotaReserve is
   // the day's mail kept for sign-in emails, and applicationsPerDay is the most application emails
-  // sent in a day to addresses not on the list (F118); requests and partner messages share a cap
-  // per window.
+  // sent in a day to addresses not on the list (F118); listNoticesPerDay is the most emails telling
+  // leaders someone joined the list for the next cohort (F144); requests and partner messages share
+  // a cap per window.
   var CODE_LIMITS = {
     ttlMs: 30 * 60 * 1000, maxTries: 5,
     waitsMs: [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000, 3 * 60 * 60 * 1000, 6 * 60 * 60 * 1000],
-    quietMs: 6 * 60 * 60 * 1000, quotaReserve: 20, applicationsPerDay: 40, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
+    quietMs: 6 * 60 * 60 * 1000, quotaReserve: 20, applicationsPerDay: 40, listNoticesPerDay: 10, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
+  };
+  // Where the club is online and its contact email: the footer of every page, Home, and the club's
+  // emails. With email empty, its link is left out.
+  var SOCIAL = {
+    instagram: 'https://www.instagram.com/the_masters_club/',
+    linkedin: 'https://www.linkedin.com/company/111716473/',
+    email: 'mastersclub.runi@gmail.com'
   };
   var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'bio', 'photo'];
   // Adding a kind of event or post is one line here; the forms and pages read these lists.
@@ -1007,6 +1007,7 @@ var Core = (function () {
     POST_DAYS: POST_DAYS,
     TIME_ZONE: TIME_ZONE,
     CODE_LIMITS: CODE_LIMITS,
+    SOCIAL: SOCIAL,
     EVENT_LEADER_FIELDS: EVENT_LEADER_FIELDS,
     toBool: toBool,
     isTier: isTier,
@@ -1509,7 +1510,7 @@ var App = (function () {
     'Email us': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/>'
   };
   function socialLinks(cards) {
-    var s = CONTENT.social || {};
+    var s = Core.SOCIAL;
     return [['Instagram', s.instagram, '@' + String(s.instagram || '').replace(/\/+$/, '').split('/').pop()], ['LinkedIn', s.linkedin, 'The Masters Club'], ['Email us', s.email ? 'mailto:' + s.email : '', s.email]]
       .filter(function (l) { return l[1]; })
       .map(function (l) {
@@ -1738,7 +1739,8 @@ var App = (function () {
   // Applications count as open until a leader turns them off in Admin. While they're closed, no page
   // links the form, and an email given on Join goes on the list for the next cohort (F144).
   var applicationsOpen = function () { return (info().settings || {}).applications_open !== false; };
-  var CLOSED_NOTE = "Applications are closed right now. Leave your email and we'll email you the application link as soon as the next cohort opens.";
+  var CLOSED = 'Applications are closed right now.';
+  var LEAVE_EMAIL = "Leave your email and we'll email you the application link as soon as the next cohort opens.";
 
   function pageHome() {
     var c = CONTENT;
@@ -1887,7 +1889,7 @@ var App = (function () {
     return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
       '<section class="join tied"><div class="join-club panel navy"><h1>Join the club</h1>' +
       '<p class="join-lead">Open to Reichman master\'s students.' + (open && s.applications_note ? ' ' + esc(s.applications_note) : '') + '</p>' +
-      (open ? '' : '<p class="join-lead">' + esc(CLOSED_NOTE) + '</p>') +
+      (open ? '' : '<p class="join-lead"><strong>' + esc(CLOSED) + '</strong></p><p class="join-lead">' + esc(LEAVE_EMAIL) + '</p>') +
       '<dl class="join-gets"><div><dt>The club</dt><dd>' + esc(CONTENT.club) + '</dd></div><div><dt>The community</dt><dd>' + esc(CONTENT.community) + '</dd></div></dl></div>' +
       '<div class="join-form panel mist">' +
       (me ? '<h2>You\'re signed in</h2><p class="muted">As ' + esc(me.name) + '.</p><a class="btn navy" href="members">Go to the directory</a>' : '<div id="joinFlow"></div>') +
@@ -1971,7 +1973,7 @@ var App = (function () {
       '<p class="field-error" data-resend-note role="status"></p></form>' +
       '<div class="join-apply">' + (open
         ? '<p>Not a member?</p><a class="btn navy" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application now</a>'
-        : '<p>Not a member? You\'re on the list for the next cohort. We\'ll email you the application link as soon as it opens.</p>') + '</div>';
+        : '<p class="on-list"><strong>Not a member? You\'re on the list for the next cohort.</strong> We\'ll email you the application link as soon as it opens.</p>') + '</div>';
     var apply = $('[data-apply]', flow);
     if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked', { source: 'join' }); });
     var f = $('#codeForm', flow);
@@ -2084,7 +2086,7 @@ var App = (function () {
     await App.refreshPublic();
     var s = info().settings || {};
     if (!applicationsOpen()) {
-      $('#applyNote').innerHTML = esc(CLOSED_NOTE) + ' <a class="link" href="join">Leave your email</a>';
+      $('#applyNote').innerHTML = esc(CLOSED) + ' <a class="link" href="join">Leave your email</a> and we\'ll email you the application link as soon as the next cohort opens.';
       return;
     }
     var url = s.apply_url || CONTENT.applyUrl;
@@ -2910,6 +2912,7 @@ var App = (function () {
   var show = 'all';
   var open = '';
   var adding = false;
+  var listing = false;
 
   // Opening Admin shows the copy fetched after sign-in at once, then asks for a fresh one (F133).
   // A fresh copy that differs is drawn, unless the leader has started typing: their words win, and
@@ -2978,10 +2981,11 @@ var App = (function () {
         '<div class="muted small ph-sensitive" dir="auto">"' + esc(i.message) + '"</div></div><div class="row-actions"><button class="btn gold small" data-inq="done">Done</button><button class="btn quiet small" data-inq="declined">Not for us</button></div></div>';
     }).join('') : '<p class="muted">Nothing waiting. Messages from the Partners page land here.</p>';
 
-    // Everyone who left an email on Join while applications were closed, newest first (F144).
+    // Everyone who left an email on Join while applications were closed, newest first, behind a
+    // button beside Add people in Members (F144).
     var interested = data.interested || [];
     var interestHtml =
-      '<section class="admin-section" id="s-interest"><h2>The list for the next cohort' + (interested.length ? ' <span class="badge">' + interested.length + '</span>' : '') + '</h2>' +
+      '<section class="admin-section tool-drawer" id="s-interest"' + (listing ? '' : ' hidden') + '><h2>The list for the next cohort</h2>' +
       '<p class="muted measure">Everyone who left their email on Join while applications were closed. When the next cohort opens, send them the application link.</p>' +
       (interested.length ? '<div class="row-actions mt-2"><button class="btn quiet small" id="copyInterested">Copy the emails</button></div><div class="mt-2">' + interested.map(function (r) {
         return '<div class="request"><div><span class="ph-sensitive">' + esc(r.email) + '</span> <span class="muted small">' + esc(App.longDate(r.added_on)) + '</span></div></div>';
@@ -3016,9 +3020,11 @@ var App = (function () {
     var membersHtml =
       '<div class="member-tools"><input type="search" id="adminFilter" placeholder="Search by name or email" aria-label="Filter members" class="filter-input">' +
       '<div class="member-shows" role="group" aria-label="Show">' + shows.map(function (s) { return '<button class="chip' + (show === s[0] ? ' on' : '') + '" type="button" data-show="' + s[0] + '" aria-pressed="' + (show === s[0]) + '">' + s[1] + ' <span class="chip-n">' + s[2] + '</span></button>'; }).join('') + '</div>' +
+      '<button class="btn quiet small" type="button" id="listToggle" aria-expanded="' + listing + '" aria-controls="s-interest">Next cohort list' + (interested.length ? ' <span class="badge">' + interested.length + '</span>' : '') + '</button>' +
       '<button class="btn gold small" type="button" id="addToggle" aria-expanded="' + adding + '" aria-controls="s-add">Add people</button></div>' +
+      interestHtml +
 
-      '<section class="admin-section add-people" id="s-add"' + (adding ? '' : ' hidden') + '><h2>Add people</h2><div class="form-grid form-narrow">' +
+      '<section class="admin-section tool-drawer" id="s-add"' + (adding ? '' : ' hidden') + '><h2>Add people</h2><div class="form-grid form-narrow">' +
       '<label>One per line as "Name, email", or paste rows from a sheet, header row included <span class="hint">From a sheet we read only name, email, position, company, city, program, LinkedIn, interests, tier and cohort. Everything else in the paste is ignored, and people already here only get what\'s empty filled in.</span><textarea id="bulk" rows="5" placeholder="Shir Amar, shir.amar@gmail.com&#10;Ben Tal"></textarea></label>' +
       '<div class="add-row"><label>Tier ' + tierSelect('id="bulkTier"', 'club') + '</label>' +
       '<label>Cohort number <input type="text" id="bulkCohort" inputmode="numeric" placeholder="2" maxlength="20" class="input-short"></label>' +
@@ -3078,7 +3084,7 @@ var App = (function () {
       '<div class="admin-tabs" role="tablist" aria-label="Admin sections">' + tabs.map(function (t) {
         return '<button class="admin-tab" type="button" role="tab" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + (t[2] ? ' <span class="badge">' + t[2] + '</span>' : '') + '</button>';
       }).join('') + '</div>' +
-      panel('overview', overviewHtml) + panel('members', membersHtml) + panel('public', publicHtml + interestHtml) + panel('settings', settingsHtml);
+      panel('overview', overviewHtml) + panel('members', membersHtml) + panel('public', publicHtml) + panel('settings', settingsHtml);
 
     // The tabs. The address keeps the one that's open, so a reload or a shared link lands on it.
     $$('[data-tab]', body).forEach(function (b) {
@@ -3306,6 +3312,11 @@ var App = (function () {
       $('#s-add').hidden = !adding;
       e.currentTarget.setAttribute('aria-expanded', String(adding));
       if (adding) $('#bulk').focus();
+    });
+    $('#listToggle').addEventListener('click', function (e) {
+      listing = !listing;
+      $('#s-interest').hidden = !listing;
+      e.currentTarget.setAttribute('aria-expanded', String(listing));
     });
     narrow();
 

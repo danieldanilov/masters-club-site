@@ -20,12 +20,20 @@ var Core = (function () {
   // again. Six hours is the longest Google's cache keeps anything, and the count lives there, so
   // no wait may be longer (F125). quotaReserve is
   // the day's mail kept for sign-in emails, and applicationsPerDay is the most application emails
-  // sent in a day to addresses not on the list (F118); requests and partner messages share a cap
-  // per window.
+  // sent in a day to addresses not on the list (F118); listNoticesPerDay is the most emails telling
+  // leaders someone joined the list for the next cohort (F144); requests and partner messages share
+  // a cap per window.
   var CODE_LIMITS = {
     ttlMs: 30 * 60 * 1000, maxTries: 5,
     waitsMs: [60 * 1000, 5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000, 3 * 60 * 60 * 1000, 6 * 60 * 60 * 1000],
-    quietMs: 6 * 60 * 60 * 1000, quotaReserve: 20, applicationsPerDay: 40, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
+    quietMs: 6 * 60 * 60 * 1000, quotaReserve: 20, applicationsPerDay: 40, listNoticesPerDay: 10, requestsPerWindow: 10, windowMs: 6 * 60 * 60 * 1000
+  };
+  // Where the club is online and its contact email: the footer of every page, Home, and the club's
+  // emails. With email empty, its link is left out.
+  var SOCIAL = {
+    instagram: 'https://www.instagram.com/the_masters_club/',
+    linkedin: 'https://www.linkedin.com/company/111716473/',
+    email: 'mastersclub.runi@gmail.com'
   };
   var PROFILE_FIELDS = ['role', 'company', 'city', 'program', 'industry', 'help', 'looking', 'open_to', 'interests', 'linkedin', 'phone', 'show_phone', 'show_email', 'bio', 'photo'];
   // Adding a kind of event or post is one line here; the forms and pages read these lists.
@@ -672,6 +680,7 @@ var Core = (function () {
     POST_DAYS: POST_DAYS,
     TIME_ZONE: TIME_ZONE,
     CODE_LIMITS: CODE_LIMITS,
+    SOCIAL: SOCIAL,
     EVENT_LEADER_FIELDS: EVENT_LEADER_FIELDS,
     toBool: toBool,
     isTier: isTier,

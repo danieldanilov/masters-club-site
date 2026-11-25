@@ -6,7 +6,8 @@
   // Applications count as open until a leader turns them off in Admin. While they're closed, no page
   // links the form, and an email given on Join goes on the list for the next cohort (F144).
   var applicationsOpen = function () { return (info().settings || {}).applications_open !== false; };
-  var CLOSED_NOTE = "Applications are closed right now. Leave your email and we'll email you the application link as soon as the next cohort opens.";
+  var CLOSED = 'Applications are closed right now.';
+  var LEAVE_EMAIL = "Leave your email and we'll email you the application link as soon as the next cohort opens.";
 
   function pageHome() {
     var c = CONTENT;
@@ -155,7 +156,7 @@
     return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
       '<section class="join tied"><div class="join-club panel navy"><h1>Join the club</h1>' +
       '<p class="join-lead">Open to Reichman master\'s students.' + (open && s.applications_note ? ' ' + esc(s.applications_note) : '') + '</p>' +
-      (open ? '' : '<p class="join-lead">' + esc(CLOSED_NOTE) + '</p>') +
+      (open ? '' : '<p class="join-lead"><strong>' + esc(CLOSED) + '</strong></p><p class="join-lead">' + esc(LEAVE_EMAIL) + '</p>') +
       '<dl class="join-gets"><div><dt>The club</dt><dd>' + esc(CONTENT.club) + '</dd></div><div><dt>The community</dt><dd>' + esc(CONTENT.community) + '</dd></div></dl></div>' +
       '<div class="join-form panel mist">' +
       (me ? '<h2>You\'re signed in</h2><p class="muted">As ' + esc(me.name) + '.</p><a class="btn navy" href="members">Go to the directory</a>' : '<div id="joinFlow"></div>') +
@@ -239,7 +240,7 @@
       '<p class="field-error" data-resend-note role="status"></p></form>' +
       '<div class="join-apply">' + (open
         ? '<p>Not a member?</p><a class="btn navy" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application now</a>'
-        : '<p>Not a member? You\'re on the list for the next cohort. We\'ll email you the application link as soon as it opens.</p>') + '</div>';
+        : '<p class="on-list"><strong>Not a member? You\'re on the list for the next cohort.</strong> We\'ll email you the application link as soon as it opens.</p>') + '</div>';
     var apply = $('[data-apply]', flow);
     if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked', { source: 'join' }); });
     var f = $('#codeForm', flow);
@@ -352,7 +353,7 @@
     await App.refreshPublic();
     var s = info().settings || {};
     if (!applicationsOpen()) {
-      $('#applyNote').innerHTML = esc(CLOSED_NOTE) + ' <a class="link" href="join">Leave your email</a>';
+      $('#applyNote').innerHTML = esc(CLOSED) + ' <a class="link" href="join">Leave your email</a> and we\'ll email you the application link as soon as the next cohort opens.';
       return;
     }
     var url = s.apply_url || CONTENT.applyUrl;

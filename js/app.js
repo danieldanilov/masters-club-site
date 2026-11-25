@@ -380,7 +380,7 @@ var App = (function () {
     'Email us': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/>'
   };
   function socialLinks(cards) {
-    var s = CONTENT.social || {};
+    var s = Core.SOCIAL;
     return [['Instagram', s.instagram, '@' + String(s.instagram || '').replace(/\/+$/, '').split('/').pop()], ['LinkedIn', s.linkedin, 'The Masters Club'], ['Email us', s.email ? 'mailto:' + s.email : '', s.email]]
       .filter(function (l) { return l[1]; })
       .map(function (l) {

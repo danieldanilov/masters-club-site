@@ -31,14 +31,6 @@ var CONTENT = {
     { src: 'img/club/community-night-out.jpg', alt: 'Members raising glasses at a night out' }
   ],
 
-  // Where the club is online and its contact email. They show in the footer of every page and on
-  // Home.
-  social: {
-    instagram: 'https://www.instagram.com/the_masters_club/',
-    linkedin: 'https://www.linkedin.com/company/111716473/',
-    email: 'mastersclub.runi@gmail.com'
-  },
-
   // What applicants ask, on Join. Keep each answer to a sentence or two.
   faq: [
     { q: 'Who can apply?', a: "Master's students at Reichman University, from any school or programme." },

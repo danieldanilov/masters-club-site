@@ -18,6 +18,7 @@
   var show = 'all';
   var open = '';
   var adding = false;
+  var listing = false;
 
   // Opening Admin shows the copy fetched after sign-in at once, then asks for a fresh one (F133).
   // A fresh copy that differs is drawn, unless the leader has started typing: their words win, and
@@ -86,10 +87,11 @@
         '<div class="muted small ph-sensitive" dir="auto">"' + esc(i.message) + '"</div></div><div class="row-actions"><button class="btn gold small" data-inq="done">Done</button><button class="btn quiet small" data-inq="declined">Not for us</button></div></div>';
     }).join('') : '<p class="muted">Nothing waiting. Messages from the Partners page land here.</p>';
 
-    // Everyone who left an email on Join while applications were closed, newest first (F144).
+    // Everyone who left an email on Join while applications were closed, newest first, behind a
+    // button beside Add people in Members (F144).
     var interested = data.interested || [];
     var interestHtml =
-      '<section class="admin-section" id="s-interest"><h2>The list for the next cohort' + (interested.length ? ' <span class="badge">' + interested.length + '</span>' : '') + '</h2>' +
+      '<section class="admin-section tool-drawer" id="s-interest"' + (listing ? '' : ' hidden') + '><h2>The list for the next cohort</h2>' +
       '<p class="muted measure">Everyone who left their email on Join while applications were closed. When the next cohort opens, send them the application link.</p>' +
       (interested.length ? '<div class="row-actions mt-2"><button class="btn quiet small" id="copyInterested">Copy the emails</button></div><div class="mt-2">' + interested.map(function (r) {
         return '<div class="request"><div><span class="ph-sensitive">' + esc(r.email) + '</span> <span class="muted small">' + esc(App.longDate(r.added_on)) + '</span></div></div>';
@@ -124,9 +126,11 @@
     var membersHtml =
       '<div class="member-tools"><input type="search" id="adminFilter" placeholder="Search by name or email" aria-label="Filter members" class="filter-input">' +
       '<div class="member-shows" role="group" aria-label="Show">' + shows.map(function (s) { return '<button class="chip' + (show === s[0] ? ' on' : '') + '" type="button" data-show="' + s[0] + '" aria-pressed="' + (show === s[0]) + '">' + s[1] + ' <span class="chip-n">' + s[2] + '</span></button>'; }).join('') + '</div>' +
+      '<button class="btn quiet small" type="button" id="listToggle" aria-expanded="' + listing + '" aria-controls="s-interest">Next cohort list' + (interested.length ? ' <span class="badge">' + interested.length + '</span>' : '') + '</button>' +
       '<button class="btn gold small" type="button" id="addToggle" aria-expanded="' + adding + '" aria-controls="s-add">Add people</button></div>' +
+      interestHtml +
 
-      '<section class="admin-section add-people" id="s-add"' + (adding ? '' : ' hidden') + '><h2>Add people</h2><div class="form-grid form-narrow">' +
+      '<section class="admin-section tool-drawer" id="s-add"' + (adding ? '' : ' hidden') + '><h2>Add people</h2><div class="form-grid form-narrow">' +
       '<label>One per line as "Name, email", or paste rows from a sheet, header row included <span class="hint">From a sheet we read only name, email, position, company, city, program, LinkedIn, interests, tier and cohort. Everything else in the paste is ignored, and people already here only get what\'s empty filled in.</span><textarea id="bulk" rows="5" placeholder="Shir Amar, shir.amar@gmail.com&#10;Ben Tal"></textarea></label>' +
       '<div class="add-row"><label>Tier ' + tierSelect('id="bulkTier"', 'club') + '</label>' +
       '<label>Cohort number <input type="text" id="bulkCohort" inputmode="numeric" placeholder="2" maxlength="20" class="input-short"></label>' +
@@ -186,7 +190,7 @@
       '<div class="admin-tabs" role="tablist" aria-label="Admin sections">' + tabs.map(function (t) {
         return '<button class="admin-tab" type="button" role="tab" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + (t[2] ? ' <span class="badge">' + t[2] + '</span>' : '') + '</button>';
       }).join('') + '</div>' +
-      panel('overview', overviewHtml) + panel('members', membersHtml) + panel('public', publicHtml + interestHtml) + panel('settings', settingsHtml);
+      panel('overview', overviewHtml) + panel('members', membersHtml) + panel('public', publicHtml) + panel('settings', settingsHtml);
 
     // The tabs. The address keeps the one that's open, so a reload or a shared link lands on it.
     $$('[data-tab]', body).forEach(function (b) {
@@ -414,6 +418,11 @@
       $('#s-add').hidden = !adding;
       e.currentTarget.setAttribute('aria-expanded', String(adding));
       if (adding) $('#bulk').focus();
+    });
+    $('#listToggle').addEventListener('click', function (e) {
+      listing = !listing;
+      $('#s-interest').hidden = !listing;
+      e.currentTarget.setAttribute('aria-expanded', String(listing));
     });
     narrow();
 
