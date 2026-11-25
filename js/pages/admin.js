@@ -86,6 +86,15 @@
         '<div class="muted small ph-sensitive" dir="auto">"' + esc(i.message) + '"</div></div><div class="row-actions"><button class="btn gold small" data-inq="done">Done</button><button class="btn quiet small" data-inq="declined">Not for us</button></div></div>';
     }).join('') : '<p class="muted">Nothing waiting. Messages from the Partners page land here.</p>';
 
+    // Everyone who left an email on Join while applications were closed, newest first (F144).
+    var interested = data.interested || [];
+    var interestHtml =
+      '<section class="admin-section" id="s-interest"><h2>The list for the next cohort' + (interested.length ? ' <span class="badge">' + interested.length + '</span>' : '') + '</h2>' +
+      '<p class="muted measure">Everyone who left their email on Join while applications were closed. When the next cohort opens, send them the application link.</p>' +
+      (interested.length ? '<div class="row-actions mt-2"><button class="btn quiet small" id="copyInterested">Copy the emails</button></div><div class="mt-2">' + interested.map(function (r) {
+        return '<div class="request"><div><span class="ph-sensitive">' + esc(r.email) + '</span> <span class="muted small">' + esc(App.longDate(r.added_on)) + '</span></div></div>';
+      }).join('') + '</div>' : '<p class="muted mt-2">Nobody yet.</p>') + '</section>';
+
     var waiting = pending.length + inquiries.length;
     var unlinked = data.members.filter(function (m) { return !m.email; });
     var tabs = [['overview', 'Overview', waiting], ['members', 'Members', 0], ['public', 'Public pages', 0], ['settings', 'Settings', 0]];
@@ -177,7 +186,7 @@
       '<div class="admin-tabs" role="tablist" aria-label="Admin sections">' + tabs.map(function (t) {
         return '<button class="admin-tab" type="button" role="tab" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + (t[2] ? ' <span class="badge">' + t[2] + '</span>' : '') + '</button>';
       }).join('') + '</div>' +
-      panel('overview', overviewHtml) + panel('members', membersHtml) + panel('public', publicHtml) + panel('settings', settingsHtml);
+      panel('overview', overviewHtml) + panel('members', membersHtml) + panel('public', publicHtml + interestHtml) + panel('settings', settingsHtml);
 
     // The tabs. The address keeps the one that's open, so a reload or a shared link lands on it.
     $$('[data-tab]', body).forEach(function (b) {
@@ -201,6 +210,8 @@
         });
       });
     });
+    var ci = $('#copyInterested');
+    if (ci) ci.addEventListener('click', function () { Analytics.track('next cohort list copied', { count: interested.length }); App.copyText(interested.map(function (r) { return r.email; }).join(', ')); });
     var cd = $('#copyDigest');
     if (cd) cd.addEventListener('click', function () { Analytics.track('digest copied'); App.copyText(digest); });
     var pd = $('#postDigest');

@@ -3,6 +3,10 @@
   var $ = App.$, $$ = App.$$, esc = App.esc, state = App.state, page = App.page, avatar = App.avatar, toast = App.toast, go = App.go, setBusy = App.setBusy, clearErrors = App.clearErrors, showErrors = App.showErrors, longDate = App.longDate;
 
   var info = function () { return state.publicInfo || {}; };
+  // Applications count as open until a leader turns them off in Admin. While they're closed, no page
+  // links the form, and an email given on Join goes on the list for the next cohort (F144).
+  var applicationsOpen = function () { return (info().settings || {}).applications_open !== false; };
+  var CLOSED_NOTE = "Applications are closed right now. Leave your email and we'll email you the application link as soon as the next cohort opens.";
 
   function pageHome() {
     var c = CONTENT;
@@ -14,7 +18,7 @@
     return '<section class="hero"><div class="tie" aria-hidden="true"></div><div class="wrap">' +
       '<h1>The Masters Club</h1>' +
       '<p class="lead">' + esc(c.tagline) + '</p>' +
-      '<div class="actions on-navy"><a class="btn gold" href="join">Apply for the next cohort</a><a class="link" href="partners">Partner with us</a></div>' +
+      '<div class="actions on-navy"><a class="btn gold" href="join">' + (applicationsOpen() ? 'Apply for the next cohort' : 'Join the list for the next cohort') + '</a><a class="link" href="partners">Partner with us</a></div>' +
       '</div></section>' +
       '<div class="wrap">' +
       '<section class="split"><h2>A club and a community</h2><dl>' +
@@ -147,10 +151,11 @@
     var me = state.me;
     var gated = opts && opts.gated;
     var s = info().settings || {};
+    var open = applicationsOpen();
     return page((gated ? '<p class="note gate">Members only. Sign in to continue.</p>' : '') +
       '<section class="join tied"><div class="join-club panel navy"><h1>Join the club</h1>' +
-      '<p class="join-lead">Open to Reichman master\'s students.' + (s.applications_note ? ' ' + esc(s.applications_note) : '') + '</p>' +
-      (s.applications_open === false ? '<p class="join-lead">Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.</p>' : '') +
+      '<p class="join-lead">Open to Reichman master\'s students.' + (open && s.applications_note ? ' ' + esc(s.applications_note) : '') + '</p>' +
+      (open ? '' : '<p class="join-lead">' + esc(CLOSED_NOTE) + '</p>') +
       '<dl class="join-gets"><div><dt>The club</dt><dd>' + esc(CONTENT.club) + '</dd></div><div><dt>The community</dt><dd>' + esc(CONTENT.community) + '</dd></div></dl></div>' +
       '<div class="join-form panel mist">' +
       (me ? '<h2>You\'re signed in</h2><p class="muted">As ' + esc(me.name) + '.</p><a class="btn navy" href="members">Go to the directory</a>' : '<div id="joinFlow"></div>') +
@@ -181,8 +186,9 @@
   }
 
   function emailStep(flow) {
-    flow.innerHTML = '<h2>Sign in or apply</h2>' +
-      '<p class="muted small">Members get a sign-in code. Everyone else gets the application form.</p>' +
+    var open = applicationsOpen();
+    flow.innerHTML = '<h2>' + (open ? 'Sign in or apply' : 'Sign in or join the list') + '</h2>' +
+      '<p class="muted small">Members get a sign-in code. ' + (open ? 'Everyone else gets the application form.' : 'Everyone else goes on the list for the next cohort.') + '</p>' +
       '<form class="code-form" id="emailForm" novalidate>' +
       '<label>Your email<input type="email" name="email" autocomplete="email" required placeholder="you@example.com"><span class="field-error" data-err="email"></span></label>' +
       '<button class="btn navy" type="submit">Continue</button></form>';
@@ -223,7 +229,7 @@
   // everyone else. The address itself is the way back to the email step.
   function checkStep(flow, email, waitNote) {
     var s = info().settings || {};
-    var open = s.applications_open !== false;
+    var open = applicationsOpen();
     flow.innerHTML = '<h2>Check your email</h2>' +
       '<p class="muted small">We sent you an email at <button class="link wrap ph-sensitive" type="button" data-change title="Use another email">' + esc(email) + '</button>.</p>' +
       '<form class="code-form" id="codeForm" novalidate>' +
@@ -233,7 +239,7 @@
       '<p class="field-error" data-resend-note role="status"></p></form>' +
       '<div class="join-apply">' + (open
         ? '<p>Not a member?</p><a class="btn navy" href="' + esc(s.apply_url || CONTENT.applyUrl) + '" target="_blank" rel="noopener" data-apply>Start your application now</a>'
-        : '<p>Not a member? Applications are closed right now.</p>') + '</div>';
+        : '<p>Not a member? You\'re on the list for the next cohort. We\'ll email you the application link as soon as it opens.</p>') + '</div>';
     var apply = $('[data-apply]', flow);
     if (apply) apply.addEventListener('click', function () { Analytics.track('apply clicked', { source: 'join' }); });
     var f = $('#codeForm', flow);
@@ -345,8 +351,8 @@
     }
     await App.refreshPublic();
     var s = info().settings || {};
-    if (s.applications_open === false) {
-      $('#applyNote').textContent = 'Applications are closed right now. Follow the club on LinkedIn or Instagram to hear when the next cohort opens.';
+    if (!applicationsOpen()) {
+      $('#applyNote').innerHTML = esc(CLOSED_NOTE) + ' <a class="link" href="join">Leave your email</a>';
       return;
     }
     var url = s.apply_url || CONTENT.applyUrl;
